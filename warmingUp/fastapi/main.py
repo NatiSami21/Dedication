@@ -1,11 +1,15 @@
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, status, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from model import Product
 from database import SessionLocal, engine
 import database_models
 from sqlalchemy.orm import Session
 
+from typing import Annotated
+import auth
+
 app = FastAPI()
+app.include_router(auth.router)
 
 app.add_middleware(
     CORSMiddleware,
@@ -15,10 +19,10 @@ app.add_middleware(
 
 database_models.Base.metadata.create_all(bind=engine)
 
-@app.get("/")
-  
-def greet():
-    return "Hello, FastAPI!"
+#@app.get("/")
+#def greet():
+#    return "Hello, FastAPI!"
+
 
 products = [
     Product(id=1, name="Laptop", description="A high-performance laptop", price=999.99, quantity=10),
@@ -48,6 +52,12 @@ def init_db():
     db.close()
 
 init_db()
+
+@app.get ("/", status_code=status.HTTP_200_OK)
+def user (user: None, db: Session = Depends(get_db)):
+    if user is None:
+        raise HTTPException(status_code-401, detail='Authenthication failed')
+    return {"User": user}
 
 @app.get("/products")
 def get_all_products (db: Session = Depends(get_db)): #depedecy injection
@@ -89,3 +99,4 @@ def delete_product(id: int, db: Session = Depends(get_db)):
         db.commit()
     else:
         return "Product Not found"
+    
