@@ -1,7 +1,11 @@
 from fastapi import FastAPI
+from . import auth
 
-app = FastAPI()
+app = FastAPI(title="Academic Assignment Helper")
+
+app.include_router(auth.router)
+
 
 @app.get("/")
-def read_root():
-    return {"message": "Academic Assignment Helper backend running 🚀"}
+def root():
+    return {"message": "Backend running 🚀"}
