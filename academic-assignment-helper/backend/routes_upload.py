@@ -1,9 +1,13 @@
+# routes_upload.py
+ 
 import os, shutil, requests
-from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, status
+from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
 from sqlalchemy.orm import Session
-from . import database, models
-from .auth import get_current_user
+import database, models
+from auth import get_current_user
 from dotenv import load_dotenv
+#from . import database, models
+#from .auth import get_current_user
 
 load_dotenv()
 
@@ -25,22 +29,22 @@ def upload_assignment(
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
-    # ከዛ ሌትስ Record metadata in DB
+    # ከዛ ሌትስ Record metadata in DB  
     new_assignment = models.Assignment(
         student_id=current_user.id,
         filename=file.filename,
-        original_text=None,  # will be filled by n8n ሲመቸን!
+        original_text=None,
     )
     db.add(new_assignment)
     db.commit()
     db.refresh(new_assignment)
 
-    # ለጥቆ ሌትስ Trigger n8n workflow (webhook)
+    # ለጥቆ ሌትስ Trigger n8n workflow (webhook) 
     try:
         payload = {
             "assignment_id": new_assignment.id,
             "student_email": current_user.email,
-            "file_path": file_path,
+             "filename": file.filename,
         }
         res = requests.post(N8N_WEBHOOK_URL, json=payload, timeout=10)
         res.raise_for_status()
@@ -50,5 +54,5 @@ def upload_assignment(
     return {
         "message": "Assignment uploaded successfully and processing started.",
         "assignment_id": new_assignment.id,
-        "file_path": file_path,
+        "file_path": os.path.abspath(file_path),
     }

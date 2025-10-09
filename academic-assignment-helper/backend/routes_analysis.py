@@ -1,7 +1,10 @@
+# routes_analysis.py
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from . import database, models
-from .auth import get_current_user
+import database, models  
+from auth import get_current_user 
+#from . import database, models
+#from .auth import get_current_user
 
 router = APIRouter(prefix="/analysis", tags=["Analysis Results"])
 

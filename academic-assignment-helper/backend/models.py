@@ -1,9 +1,10 @@
+# models.py
 from sqlalchemy import Column, Integer, String, Text, Float, ForeignKey, JSON, TIMESTAMP, func
 from sqlalchemy.orm import relationship
-from .database import Base
+#from .database import Base
+import database  # absolute import
 
-
-class Student(Base):
+class Student(database.Base):
     __tablename__ = "students"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -16,7 +17,7 @@ class Student(Base):
     assignments = relationship("Assignment", back_populates="student")
 
 
-class Assignment(Base):
+class Assignment(database.Base):
     __tablename__ = "assignments"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -32,7 +33,7 @@ class Assignment(Base):
     analysis_result = relationship("AnalysisResult", back_populates="assignment", uselist=False)
 
 
-class AnalysisResult(Base):
+class AnalysisResult(database.Base):
     __tablename__ = "analysis_results"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -48,7 +49,7 @@ class AnalysisResult(Base):
     assignment = relationship("Assignment", back_populates="analysis_result")
 
 
-class AcademicSource(Base):
+class AcademicSource(database.Base):
     __tablename__ = "academic_sources"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -57,5 +58,5 @@ class AcademicSource(Base):
     publication_year = Column(Integer)
     abstract = Column(Text)
     full_text = Column(Text)
-    source_type = Column(String)  # 'paper', 'textbook', 'course_material'
-    embedding = Column(Text)  # placeholder; for use of pgvector later
+    source_type = Column(String)  # e.g., 'paper', 'textbook', 'course_material'
+    embedding = Column(Text)  # for pgvector use later
