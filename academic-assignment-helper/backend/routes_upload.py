@@ -17,6 +17,8 @@ N8N_WEBHOOK_URL = os.getenv("N8N_WEBHOOK_URL")
 UPLOAD_DIR = "data/uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
+ALLOWED_EXTENSIONS = {".pdf", ".docx"}
+
 
 @router.post("/", status_code=201)
 def upload_assignment(
@@ -24,6 +26,15 @@ def upload_assignment(
     db: Session = Depends(database.get_db),
     current_user: models.Student = Depends(get_current_user),
 ):
+    # Check file extension
+    _, ext = os.path.splitext(file.filename)
+    if ext.lower() not in ALLOWED_EXTENSIONS:
+        raise HTTPException(
+            status_code=400,
+            detail="Only PDF and DOCX files are allowed."
+        )
+
+
     # መጀመሪያ ሌትስ Save the file locally
     file_path = os.path.join(UPLOAD_DIR, file.filename)
     with open(file_path, "wb") as buffer:
