@@ -8,6 +8,8 @@ from ai_utils import analyze_assignment_text  #Friendli.ai integration
 import json
 from database import SessionLocal
 
+from vector_utils import embed_academic_sources  #Hugging Face integration
+
 router = APIRouter(prefix="/analysis", tags=["Analysis Results"])
 
  
@@ -184,3 +186,9 @@ def run_analysis_manual(
 
     run_ai_analysis(assignment_id, text)
     return {"message": f"Manual AI analysis triggered for assignment {assignment_id}"}
+
+@router.post("/embed-sources")
+def embed_sources_endpoint(db: Session = Depends(database.get_db)):
+    """Manual trigger to generate embeddings for academic sources."""
+    embed_academic_sources(db)
+    return {"message": "Embedding process completed"}

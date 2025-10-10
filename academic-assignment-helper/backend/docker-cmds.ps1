@@ -41,3 +41,7 @@
 # docker exec -it academic_n8n npm install n8n-nodes-docx-converter
 #The correct command to install the package to the n8n nodes directory within the container is generally:
 #docker exec -it academic_n8n npm install n8n-nodes-docx-converter --prefix=/home/node/.n8n/nodes
+
+
+# To back up the PostgreSQL database to a SQL file with a timestamp
+#docker exec -t academic_postgres pg_dump -U postgres academic_helper > "academic_assignment_helper_backup_$(Get-Date -Format "yyyy_MM_dd_HH").sql"

@@ -1,0 +1,43 @@
+# Dockerfile.postgres
+# Use the standard PostgreSQL 16 image
+FROM postgres:16
+
+# Install necessary build dependencies, INCLUDING ca-certificates and git
+# - ca-certificates: essential for validating SSL/TLS connections (HTTPS)
+# - build-essential: provides gcc, make, etc.
+# - postgresql-server-dev-16: provides PostgreSQL header files
+# - git: needed to clone the pgvector repository
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    postgresql-server-dev-16 \
+    git \
+    ca-certificates \
+    --no-install-recommends && \
+    rm -rf /var/lib/apt/lists/*
+
+# Clone the pgvector repository (This step will now work)
+RUN git clone --branch v0.6.2 https://github.com/pgvector/pgvector.git /usr/src/pgvector
+
+# Compile and install pgvector
+WORKDIR /usr/src/pgvector
+RUN make && make install
+
+# Clean up temporary files and dependencies to reduce image size
+RUN apt-get purge -y build-essential git postgresql-server-dev-16 && \
+    apt-get autoremove -y && \
+    rm -rf /usr/src/pgvector
+
+#then let's add extension
+#docker exec -it academic_postgres psql -U postgres -d academic_helper
+#academic_helper=# CREATE EXTENSION IF NOT EXISTS vector;
+#CREATE EXTENSION
+#academic_helper=# 
+
+#docker compose restart postgres
+#docker exec -it academic_postgres psql -U postgres -d academic_helper -c "\dx"
+#docker exec -it academic_postgres psql -U postgres -d academic_helper -c "\d+ academic_sources"
+# Now Let's check it
+#Extension: pgvector
+#Table column: embedding vector(384)
+# if still text:
+#docker exec -it academic_postgres psql -U postgres -d academic_helper -c "ALTER TABLE academic_sources ALTER COLUMN embedding TYPE vector(384) USING embedding::vector(384);"
