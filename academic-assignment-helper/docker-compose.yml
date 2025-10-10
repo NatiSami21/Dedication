@@ -64,6 +64,23 @@ services:
       - n8n_data:/home/node/.n8n
       - ./data/uploads:/app/data/uploads 
 
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: academic_pgadmin
+    restart: always
+    environment: 
+      PGADMIN_DEFAULT_EMAIL: afritioalberts1216@gmail.com
+      PGADMIN_DEFAULT_PASSWORD: 0904161978 
+    ports: 
+      - "5500:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      - postgres
+    networks: 
+      - default
+
 volumes:
   postgres_data:
+  pgadmin_data:
   n8n_data:
