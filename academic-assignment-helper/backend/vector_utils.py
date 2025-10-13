@@ -1,9 +1,13 @@
-import os, time
+# backend/vector_utils.py
+
+import os
+import time
 import numpy as np
 from huggingface_hub import InferenceClient
+from sqlalchemy import text
 from sqlalchemy.orm import Session
-import models
 from dotenv import load_dotenv
+import models
 
 load_dotenv()
 
@@ -12,39 +16,34 @@ EMBED_MODEL = os.getenv("HUGGINGFACE_EMBEDDING_MODEL", "sentence-transformers/al
 
 client = InferenceClient(api_key=HF_API_KEY)
 
+# --------------------------------------------------------
+# ማን! this part lay malet nw. . . Embedding Generate yadergal malet nw
+# -------------------------------------------------------- 
 def get_embedding(text: str, retries=3):
     """
-    Generate sentence embeddings using Hugging Face InferenceClient.
-    Works on free-tier (no payment or card required).
+    I'm trying to generate text embedding using Hugging Face InferenceClient (eza aza yehone sitachew lay nef interface ale shufew).
+    Keza malet nw 384D vector malet nw python list return yaregal malet nw. ማን! 768D kefelek all-mpnet-base-v2 shof shof adrgat.
     """
-    if not HF_API_KEY:
-        raise ValueError("❌ Missing HUGGINGFACE_API_KEY in .env")
-
     for attempt in range(retries):
         try:
-            # Call Hugging Face free inference endpoint
-            response = client.feature_extraction(text[:1000], model=EMBED_MODEL)
-
-            # Handle nested formats (list[list[float]] or ndarray)
-            if isinstance(response, np.ndarray):
-                return response.tolist()
-            elif isinstance(response, list) and len(response) > 0:
-                if isinstance(response[0], list):
-                    return response[0]
-                return response
-
-            raise ValueError(f"Unexpected embedding format: {type(response)}")
-
+            result = client.feature_extraction(text[:1000], model=EMBED_MODEL)
+            if isinstance(result, list) and isinstance(result[0], list):
+                return result[0]
+            elif isinstance(result, np.ndarray):
+                return result.tolist()
+            return result
         except Exception as e:
             print(f"[VECTOR_UTILS] Retry {attempt+1}/{retries} due to {e}")
             time.sleep(2)
-
     raise RuntimeError("Failed to generate embedding after retries")
 
 
+# --------------------------------------------------------
+# ማን! eziga bachru Academic Sources  Embed yadergal malet nw, ያው for the missing ones
+# --------------------------------------------------------
 def embed_academic_sources(db: Session):
     """
-    Generate and store embeddings for academic sources that have none.
+    Generate embeddings for academic sources missing one.
     """
     sources = db.query(models.AcademicSource).filter(models.AcademicSource.embedding == None).all()
     print(f"[VECTOR_UTILS] Found {len(sources)} sources needing embeddings.")
@@ -53,19 +52,68 @@ def embed_academic_sources(db: Session):
         try:
             text = f"{src.title}. {src.abstract or ''}"
             embedding = get_embedding(text)
-
-            # ✅ Convert numpy array → list for PostgreSQL
             if isinstance(embedding, np.ndarray):
                 embedding = embedding.tolist()
-
-            # Ensure it’s JSON serializable
-            if not isinstance(embedding, list):
-                raise TypeError(f"Embedding for {src.title} is not a list")
-
             src.embedding = embedding
             db.commit()
-            print(f"[VECTOR_UTILS] ✅ Embedded: {src.title}")
-
+            print(f"[VECTOR_UTILS] Embedded: {src.title}")
         except Exception as e:
             db.rollback()
-            print(f"[VECTOR_UTILS] ❌ Failed for {src.id}: {e}")
+            print(f"[VECTOR_UTILS] Failed for {src.id}: {e}")
+
+
+# --------------------------------------------------------
+#  Fam echi demo shof sinaregat  Vector Index creation neger nat, similarity searchuwan mela yadergal malet nw
+# --------------------------------------------------------
+def index_academic_sources(db: Session):
+    """
+    Create pgvector index for similarity search if it doesn't exist.
+    """
+    try:
+        db.execute(text("""
+            CREATE INDEX IF NOT EXISTS academic_sources_embedding_idx
+            ON academic_sources
+            USING ivfflat (embedding vector_cosine_ops)
+            WITH (lists = 100);
+        """))
+        db.commit()
+        print("[VECTOR_UTILS] Vector index created or already exists.")
+    except Exception as e:
+        db.rollback()
+        print(f"[VECTOR_UTILS] Failed to create index: {e}")
+
+
+# --------------------------------------------------------
+#  wegen eziga Semantic Search le temesasay Sources tef tef yilal, 
+# --------------------------------------------------------
+def search_similar_sources(db: Session, query_text: str, top_k: int = 5):
+    """
+    Perform semantic similarity search using pgvector.
+    Returns a list of top_k most similar academic sources.
+    """
+    try:
+        query_embedding = get_embedding(query_text)
+        if isinstance(query_embedding, np.ndarray):
+            query_embedding = query_embedding.tolist()
+
+        sql = text("""
+            SELECT id, title, abstract,
+                   1 - (embedding <=> :embedding) AS similarity
+            FROM academic_sources
+            ORDER BY embedding <=> :embedding
+            LIMIT :top_k;
+        """)
+
+        results = db.execute(sql, {"embedding": query_embedding, "top_k": top_k}).fetchall()
+        return [
+            {
+                "id": r.id,
+                "title": r.title,
+                "abstract": r.abstract,
+                "similarity": round(r.similarity, 4),
+            }
+            for r in results
+        ]
+    except Exception as e:
+        print(f"[VECTOR_UTILS] Search failed: {e}")
+        return []

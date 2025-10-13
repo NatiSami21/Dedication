@@ -1,14 +1,16 @@
 # backend/routes_analysis.py
-from fastapi import APIRouter, Depends, HTTPException, Request, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, Request, BackgroundTasks, Query
 from sqlalchemy.orm import Session
 import re, json, time
 import database, models
 from auth import get_current_user
 from ai_utils import analyze_assignment_text  #Friendli.ai integration
 import json
-from database import SessionLocal
+from database import SessionLocal, get_db
 
-from vector_utils import embed_academic_sources  #Hugging Face integration
+from vector_utils import embed_academic_sources  #Hugging Face integration   
+import vector_utils
+
 
 router = APIRouter(prefix="/analysis", tags=["Analysis Results"])
 
@@ -192,3 +194,21 @@ def embed_sources_endpoint(db: Session = Depends(database.get_db)):
     """Manual trigger to generate embeddings for academic sources."""
     embed_academic_sources(db)
     return {"message": "Embedding process completed"}
+
+@router.post("/index-sources")
+def create_vector_index(db: Session = Depends(get_db)):
+    """
+    Create pgvector index for academic sources.
+    """
+    vector_utils.index_academic_sources(db)
+    return {"message": "Vector index created or already exists."}
+
+@router.get("/search-similar")
+def search_similar(query: str = Query(..., description="Text to find similar sources for"),
+                   top_k: int = 5,
+                   db: Session = Depends(get_db)):
+    """
+    Search semantically similar academic sources.
+    """
+    results = vector_utils.search_similar_sources(db, query, top_k)
+    return {"results": results}
