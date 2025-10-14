@@ -59,4 +59,4 @@ class AcademicSource(database.Base):
     abstract = Column(Text)
     full_text = Column(Text)
     source_type = Column(String)  # e.g., 'paper', 'textbook', 'course_material'
-    embedding = Column(Text)  # for pgvector use later
+    embedding = Column(Text)  # turned to vector by installing pgvector on docker from compose file

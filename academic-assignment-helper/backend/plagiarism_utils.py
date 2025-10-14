@@ -123,7 +123,7 @@ def detect_plagiarism(db: Session, assignment_text: str, top_k: int = 3, similar
             # Inspect top-k matches for this chunk
             print(f"\n[CHUNK {i+1}] Preview: {chunk[:100]}...")
             for r in rows:
-                print(f"   🔹 {r.title} → similarity {round(r.similarity, 3)}")
+                print(f"   # {r.title} → similarity {round(r.similarity, 3)}")
 
             # Flagging logic
             for r in rows:

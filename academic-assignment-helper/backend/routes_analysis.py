@@ -1,26 +1,30 @@
 # backend/routes_analysis.py
 from fastapi import APIRouter, Depends, HTTPException, Request, BackgroundTasks, Query
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 import re, json, time
 import database, models
 from auth import get_current_user
-from ai_utils import analyze_assignment_text  #Friendli.ai integration
-import json
+from ai_utils import analyze_assignment_text  # Friendli.ai or Hugging Face integration
 from database import SessionLocal, get_db
-
-from vector_utils import embed_academic_sources  #Hugging Face integration   
+from vector_utils import embed_academic_sources
 import vector_utils
-
+from plagiarism_utils import detect_plagiarism
 
 router = APIRouter(prefix="/analysis", tags=["Analysis Results"])
 
- 
+
+# ------------------------------------------------------------
+# service of sanitizing text input
+# ------------------------------------------------------------
 def sanitize_text(text: str) -> str:
     """Remove NULL and invisible characters from text."""
     return re.sub(r"[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]", "", text or "").strip()
 
 
-# GET analysis 
+# ------------------------------------------------------------
+# GET /analysis/{assignment_id}
+# ------------------------------------------------------------
 @router.get("/{assignment_id}")
 def get_analysis(
     assignment_id: int,
@@ -45,7 +49,7 @@ def get_analysis(
     if not result:
         return {"status": "processing", "message": "Analysis not completed yet."}
 
-    # --- Safe JSON decoding helpers ---
+    # Safe JSON decoding helper
     def try_json_load(value):
         if not value:
             return None
@@ -54,23 +58,26 @@ def get_analysis(
         try:
             return json.loads(value)
         except Exception:
-            return value  # fallback to raw string if broken JSON
+            return value  # fallback
 
     suggested_sources = try_json_load(result.suggested_sources)
     citation_recommendations = try_json_load(result.citation_recommendations)
+    flagged_sections = try_json_load(result.flagged_sections)
 
     return {
         "status": "done",
         "assignment": assignment.filename,
-        "topic": suggested_sources.get("topic") if isinstance(suggested_sources, dict) else None,
         "plagiarism_score": result.plagiarism_score,
+        "flagged_sections": flagged_sections,
         "suggested_sources": suggested_sources,
         "research_suggestions": result.research_suggestions,
         "citation_recommendations": citation_recommendations,
     }
 
 
-# POST /analysis/ack this is will be Triggerd by n8n webhook calls this after text extraction
+# ------------------------------------------------------------
+# POST /analysis/ack  → obviously triggered by n8n webhook
+# ------------------------------------------------------------
 @router.post("/ack")
 async def receive_text_ack(
     request: Request,
@@ -78,11 +85,12 @@ async def receive_text_ack(
     db: Session = Depends(database.get_db),
 ):
     """
-    Receives extracted text from n8n and triggers Friendli.ai analysis asynchronously.
+    Receives extracted text from n8n and triggers RAG + plagiarism analysis.
     """
     data = await request.json()
     assignment_id = data.get("assignment_id")
     extracted_text = data.get("text", "")
+    student_id = data.get("student_id")
     student_email = data.get("student_email")
 
     if not assignment_id or not extracted_text:
@@ -90,90 +98,111 @@ async def receive_text_ack(
 
     cleaned_text = sanitize_text(extracted_text)
 
-    assignment = db.query(models.Assignment).filter(models.Assignment.id == assignment_id).first()
+    assignment = db.query(models.Assignment).filter(models.Assignment.id == assignment_id and models.Assignment.student_id == student_id).first()
     if not assignment:
         raise HTTPException(status_code=404, detail="Assignment not found")
 
-    # Storing raw text
     assignment.original_text = cleaned_text
     db.commit()
     db.refresh(assignment)
 
-    #Triggering background AI analysis and this part will be non blocking
-    background_tasks.add_task(run_ai_analysis, assignment_id, cleaned_text)
+    # Non-blocking background RAG analysis
+    background_tasks.add_task(run_ai_analysis_rag, assignment_id, cleaned_text)
 
     return {"message": "Text received; analysis started.", "assignment_id": assignment_id}
 
 
-# this is oviosly background AI analysis processing
-def run_ai_analysis(assignment_id: int, text: str):
+# ------------------------------------------------------------
+# Background RAG + Plagiarism Analysis
+# ------------------------------------------------------------
+def run_ai_analysis_rag(assignment_id: int, text: str):
     db = SessionLocal()
-
     try:
-        print(f"[AI] Starting analysis for assignment_id={assignment_id}")
-        ai_result = analyze_assignment_text(text)
+        print(f"[AI] Starting RAG + plagiarism analysis for assignment_id={assignment_id}")
 
-        if "error" in ai_result:
-            print(f"[AI] Analysis failed for {assignment_id}: {ai_result['error']}")
+        # First detecting plagiarism
+        plagiarism_result = detect_plagiarism(db, text, top_k=3, similarity_threshold=0.6)
+        plagiarism_score = plagiarism_result["plagiarism_score"]
+        flagged_sections = plagiarism_result["flagged_sections"]
+
+        # Keza collecting top source titles for RAG
+        top_sources = [fs["source_title"] for fs in flagged_sections[:3]] if flagged_sections else []
+
+        # Ketlo building RAG prompt 
+        rag_prompt = f"""
+        You are an AI academic assistant. Analyze the following student assignment.
+
+        Assignment:
+        {text[:2000]}
+
+        Top Related Academic Sources:
+        {top_sources}
+
+        Plagiarism Score: {plagiarism_score}%
+
+        Provide a structured JSON with:
+        {{
+            "summary": "...",
+            "key_insights": ["..."],
+            "improvement_suggestions": ["..."],
+            "citations_to_add": ["Title 1", "Title 2"]
+        }}
+        """
+
+        # Letiko runing AI summarization (Friendli wey Hugging Face)
+        ai_output = analyze_assignment_text(rag_prompt)
+        if not ai_output or "error" in ai_output:
+            print(f"[AI] Error in RAG summarization: {ai_output}")
             return
 
-        # trying extracting fields safely
-        topic = ai_result.get("topic")
-        level = ai_result.get("academic_level")
-        plagiarism = ai_result.get("plagiarism_summary")
-        sources = ai_result.get("suggested_sources")
-        citation = ai_result.get("citation_recommendations")
-        insights = ai_result.get("key_insights")
-
-        # Safe JSON serialization
+        # Bestemecheresha -> result
         def safe_json(value):
             try:
                 return json.dumps(value) if value is not None else None
             except Exception:
                 return json.dumps(str(value))
 
-        # Checking if analysis already exists
         existing_result = db.query(models.AnalysisResult).filter_by(assignment_id=assignment_id).first()
-
         if existing_result:
-            print(f"[AI] Updating existing analysis for assignment_id={assignment_id}")
-            existing_result.suggested_sources = safe_json(sources)
-            existing_result.plagiarism_score = None
-            existing_result.flagged_sections = safe_json(None)
-            existing_result.research_suggestions = (
-                "\n".join(insights) if isinstance(insights, list) else (insights or plagiarism)
-            )
-            existing_result.citation_recommendations = safe_json(citation)
+            print(f"[AI] Updating existing record for assignment_id={assignment_id}")
+            existing_result.plagiarism_score = plagiarism_score
+            existing_result.flagged_sections = safe_json(flagged_sections)
+            existing_result.suggested_sources = safe_json(top_sources)
+            existing_result.research_suggestions = safe_json(ai_output.get("key_insights"))
+            existing_result.citation_recommendations = safe_json(ai_output.get("citations_to_add"))
             existing_result.confidence_score = 0.9
         else:
-            print(f"[AI] Creating new analysis record for assignment_id={assignment_id}")
+            print(f"[AI] Creating new record for assignment_id={assignment_id}")
             new_result = models.AnalysisResult(
                 assignment_id=assignment_id,
-                suggested_sources=safe_json(sources),
-                plagiarism_score=None,
-                flagged_sections=safe_json(None),
-                research_suggestions="\n".join(insights) if isinstance(insights, list) else (insights or plagiarism),
-                citation_recommendations=safe_json(citation),
+                plagiarism_score=plagiarism_score,
+                flagged_sections=safe_json(flagged_sections),
+                suggested_sources=safe_json(top_sources),
+                research_suggestions=safe_json(ai_output.get("key_insights")),
+                citation_recommendations=safe_json(ai_output.get("citations_to_add")),
                 confidence_score=0.9,
             )
             db.add(new_result)
 
         db.commit()
-        print(f"[AI] Analysis stored successfully for assignment_id={assignment_id}")
+        print(f"[AI] Stored full RAG + plagiarism analysis for assignment_id={assignment_id}")
 
     except Exception as e:
-        print(f"[AI] Exception during analysis for assignment_id={assignment_id}: {e}")
+        print(f"[AI] Exception during RAG analysis: {e}")
     finally:
         db.close()
 
-# I tried manual run
+
+# ------------------------------------------------------------
+# Manual test triggering
+# ------------------------------------------------------------
 @router.post("/run/{assignment_id}")
 def run_analysis_manual(
     assignment_id: int,
     db: Session = Depends(database.get_db),
     current_user: models.Student = Depends(get_current_user),
 ):
-    """Allow manual trigger of analysis for testing."""
+    """Allow manual RAG analysis trigger."""
     assignment = (
         db.query(models.Assignment)
         .filter_by(id=assignment_id, student_id=current_user.id)
@@ -186,29 +215,32 @@ def run_analysis_manual(
     if not text:
         raise HTTPException(status_code=400, detail="No text found for this assignment")
 
-    run_ai_analysis(assignment_id, text)
-    return {"message": f"Manual AI analysis triggered for assignment {assignment_id}"}
+    run_ai_analysis_rag(assignment_id, text)
+    return {"message": f"Manual RAG analysis triggered for assignment {assignment_id}"}
 
+
+# ------------------------------------------------------------
+# Helper endpoints
+# ------------------------------------------------------------
 @router.post("/embed-sources")
 def embed_sources_endpoint(db: Session = Depends(database.get_db)):
-    """Manual trigger to generate embeddings for academic sources."""
+    """Manually regenerate embeddings for academic sources."""
     embed_academic_sources(db)
-    return {"message": "Embedding process completed"}
+    return {"message": "Embedding process completed."}
+
 
 @router.post("/index-sources")
 def create_vector_index(db: Session = Depends(get_db)):
-    """
-    Create pgvector index for academic sources.
-    """
+    """Create pgvector index for academic sources."""
     vector_utils.index_academic_sources(db)
     return {"message": "Vector index created or already exists."}
+
 
 @router.get("/search-similar")
 def search_similar(query: str = Query(..., description="Text to find similar sources for"),
                    top_k: int = 5,
-                   db: Session = Depends(get_db)):
-    """
-    Search semantically similar academic sources.
-    """
+                   db: Session = Depends(get_db), 
+                   current_user = Depends(get_current_user)):
+    """Search semantically similar academic sources."""
     results = vector_utils.search_similar_sources(db, query, top_k)
     return {"results": results}

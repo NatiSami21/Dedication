@@ -73,7 +73,9 @@
         -112
       ],
       "id": "842361a7-8a7e-4c46-860d-ab8d7fec4d4a",
-      "name": "DOCX to Text"
+      "name": "DOCX to Text",
+      "notesInFlow": true,
+      "notes": "docker exec -it academic_n8n npm install n8n-nodes-docx-converter --prefix=/home/node/.n8n/nodes"
     },
     {
       "parameters": {
@@ -122,6 +124,10 @@
             {
               "name": "text",
               "value": "={{ $json.text }}"
+            },
+            {
+              "name": "student_id",
+              "value": "={{ $('Webhook').item.json.body.student_id }}"
             }
           ]
         },
@@ -147,15 +153,16 @@
             "accept-encoding": "gzip, deflate",
             "accept": "*/*",
             "connection": "keep-alive",
-            "content-length": "126",
+            "content-length": "189",
             "content-type": "application/json"
           },
           "params": {},
           "query": {},
           "body": {
-            "assignment_id": 8,
-            "student_email": "try21@try.com",
-            "filename": "Balancing Speed and Precision in AI Governance (21).docx"
+            "assignment_id": 15,
+            "student_email": "afritioalberts1216@gmail.com",
+            "student_id": 4,
+            "filename": "The Role of Quantum Computing in Accelerating Drug Discovery and Materials Science.pdf"
           },
           "webhookUrl": "http://n8n:5678/webhook-test/assignment",
           "executionMode": "test"
@@ -236,13 +243,18 @@
           }
         ]
       ]
+    },
+    "HTTP Request": {
+      "main": [
+        []
+      ]
     }
   },
   "active": true,
   "settings": {
     "executionOrder": "v1"
   },
-  "versionId": "a2cb6d7f-cb94-460b-be6c-d1e310b1c49d",
+  "versionId": "228bbc24-f3c0-4786-8733-f14e92d052cb",
   "meta": {
     "instanceId": "32c50b20d72c7c9bfaaa0d76e194e3372cb03ee3e817ed2ed45ecefaa1ef3f42"
   },

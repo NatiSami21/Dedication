@@ -55,6 +55,7 @@ def upload_assignment(
         payload = {
             "assignment_id": new_assignment.id,
             "student_email": current_user.email,
+            "student_id": current_user.id,
              "filename": file.filename,
         }
         res = requests.post(N8N_WEBHOOK_URL, json=payload, timeout=10)

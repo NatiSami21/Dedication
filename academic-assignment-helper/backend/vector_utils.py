@@ -89,30 +89,38 @@ def index_academic_sources(db: Session):
 def search_similar_sources(db: Session, query_text: str, top_k: int = 5):
     """
     Perform semantic similarity search using pgvector.
-    Returns a list of top_k most similar academic sources.
     """
     try:
         query_embedding = get_embedding(query_text)
         if isinstance(query_embedding, np.ndarray):
             query_embedding = query_embedding.tolist()
 
-        sql = text("""
+        # Use psycopg2 connection directly for proper vector handling
+        connection = db.connection()
+        cur = connection.cursor()
+        
+        embedding_str = "[" + ",".join(map(str, query_embedding)) + "]"
+        
+        sql = """
             SELECT id, title, abstract,
-                   1 - (embedding <=> :embedding) AS similarity
+                   1 - (embedding <=> %s::vector) AS similarity
             FROM academic_sources
-            ORDER BY embedding <=> :embedding
-            LIMIT :top_k;
-        """)
-
-        results = db.execute(sql, {"embedding": query_embedding, "top_k": top_k}).fetchall()
+            WHERE embedding IS NOT NULL
+            ORDER BY embedding <=> %s::vector
+            LIMIT %s;
+        """
+        
+        cur.execute(sql, (embedding_str, embedding_str, top_k))
+        rows = cur.fetchall()
+        
         return [
             {
-                "id": r.id,
-                "title": r.title,
-                "abstract": r.abstract,
-                "similarity": round(r.similarity, 4),
+                "id": r[0],
+                "title": r[1],
+                "abstract": r[2],
+                "similarity": round(float(r[3]), 4),
             }
-            for r in results
+            for r in rows
         ]
     except Exception as e:
         print(f"[VECTOR_UTILS] Search failed: {e}")
