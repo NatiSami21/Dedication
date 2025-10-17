@@ -11,7 +11,11 @@ from vector_utils import embed_academic_sources
 import vector_utils
 from plagiarism_utils import detect_plagiarism
 
+import requests, os
+N8N_NOTIFY_URL = os.getenv("N8N_NOTIFY_URL")
+
 router = APIRouter(prefix="/analysis", tags=["Analysis Results"])
+
 
 
 # ------------------------------------------------------------
@@ -187,6 +191,9 @@ def run_ai_analysis_rag(assignment_id: int, text: str):
         db.commit()
         print(f"[AI] Stored full RAG + plagiarism analysis for assignment_id={assignment_id}")
 
+        # Notify n8n that the analysis is completed
+        notify_n8n_analysis_done(db, assignment_id)
+
     except Exception as e:
         print(f"[AI] Exception during RAG analysis: {e}")
     finally:
@@ -244,3 +251,53 @@ def search_similar(query: str = Query(..., description="Text to find similar sou
     """Search semantically similar academic sources."""
     results = vector_utils.search_similar_sources(db, query, top_k)
     return {"results": results}
+
+@router.post("/notify-n8n/{assignment_id}")
+def run_notify_n8n_analysis_done_manual(
+    assignment_id: int,
+    db: Session = Depends(database.get_db),
+    current_user: models.Student = Depends(get_current_user),
+):
+    """Manual trigger to notify n8n that analysis is done. By calling notify_n8n_analysis_done """
+    notify_n8n_analysis_done(db, assignment_id)
+    return {"message": f"n8n notified for assignment {assignment_id}"}
+
+
+
+def notify_n8n_analysis_done(db: Session, assignment_id: int):
+    
+    """Notify n8n that the analysis is completed and ready."""
+    
+    N8N_NOTIFY_URL = os.getenv("N8N_NOTIFY_URL")
+
+    try:
+        # Fetch student + analysis data
+        assignment = db.query(models.Assignment).filter_by(id=assignment_id).first()
+        student = db.query(models.Student).filter_by(id=assignment.student_id).first()
+        result = db.query(models.AnalysisResult).filter_by(assignment_id=assignment_id).first()
+
+        if not assignment or not student or not result:
+            print(f"[AI] Skipping n8n notify — missing data for assignment_id={assignment_id}")
+            return
+
+        payload = {
+            "assignment_id": assignment_id,
+            "filename": assignment.filename,
+            "student_id": student.id,
+            "student_id_self": student.student_id,
+            "student_email": student.email,
+            "full_name": student.full_name,
+            "plagiarism_score": result.plagiarism_score,
+            "flagged_sections": json.loads(result.flagged_sections or "[]"),
+            "suggested_sources": json.loads(result.suggested_sources or "[]"),
+            "research_suggestions": json.loads(result.research_suggestions or "[]"),
+            "citation_recommendations": json.loads(result.citation_recommendations or "[]"),
+            "status": "done"
+        }
+
+        res = requests.post(N8N_NOTIFY_URL, json=payload, timeout=10)
+        res.raise_for_status()
+        print(f"[AI] Notified n8n for assignment_id={assignment_id}")
+
+    except Exception as e:
+        print(f"[AI] Failed to notify n8n: {e}")

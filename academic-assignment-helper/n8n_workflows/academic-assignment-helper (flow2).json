@@ -1,0 +1,1665 @@
+{
+  "name": "academic-assignment-helper",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "notify-analysis-done",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -816,
+        304
+      ],
+      "id": "10097dcb-3c9d-43dc-beac-337ca69f2642",
+      "name": "Webhook",
+      "webhookId": "cd4f0266-44b3-4300-97eb-1e286f4f5067"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Function to convert a simple array of strings into an HTML list (<ul> or <ol>)\nfunction createListHtml(dataArray, listType = 'ul') {\n    if (!Array.isArray(dataArray) || dataArray.length === 0) {\n        return `<p style=\"color:#7f8c8d;font-style:italic;\">No ${listType === 'ul' ? 'items' : 'suggestions'} available.</p>`;\n    }\n    const listTag = listType; // 'ul' or 'ol'\n    const listItems = dataArray.map(item => `\n        <li style=\"margin-bottom: 5px; color: #34495e;\">${item}</li>\n    `).join('');\n    return `<${listTag} style=\"padding-left: 20px;\">${listItems}</${listTag}>`;\n}\n\n// Main processing logic\nreturn items.map(item => {\n    const body = item.json.body;\n    \n    // 1. Process flagged_sections (Array of Objects -> Detailed HTML)\n    let flaggedSectionsHtml = '';\n    if (Array.isArray(body.flagged_sections) && body.flagged_sections.length > 0) {\n        flaggedSectionsHtml = body.flagged_sections.map(section => `\n            <div style=\"border-left: 4px solid #f39c12; padding: 10px; background-color: #fcf3cf; margin-bottom: 15px; border-radius: 4px;\">\n                <p style=\"margin: 0; font-size: 1.1em; color: #e67e22;\">\n                    <strong>Similarity:</strong> ${(section.similarity * 100).toFixed(2)}%\n                </p>\n                <p style=\"margin: 5px 0;\">\n                    <strong>Source:</strong> ${section.source_title}\n                </p>\n                <p style=\"margin: 0; font-style: italic; color: #5c6a78;\">\n                    Excerpt: \"${section.excerpt.substring(0, 150)}...\"\n                </p>\n            </div>\n        `).join('');\n    } else {\n        flaggedSectionsHtml = '<p style=\"color:#7f8c8d;font-style:italic;\">No sections were flagged for similarity.</p>';\n    }\n\n    // 2. Process suggested_sources (Array of Strings -> <ul>)\n    const suggestedSourcesHtml = createListHtml(body.suggested_sources, 'ul');\n\n    // 3. Process research_suggestions (Array of Strings -> <ol>)\n    const researchSuggestionsHtml = createListHtml(body.research_suggestions, 'ol');\n\n    // 4. Process citation_recommendations (Array of Strings -> <ul>)\n    const citationRecommendationsHtml = createListHtml(body.citation_recommendations, 'ul');\n    \n    // 5. Format Plagiarism Score with conditional styling\n    const score = body.plagiarism_score;\n    const scoreColor = score > 60 ? '#e74c3c' : (score > 30 ? '#f39c12' : '#2ecc71');\n    const scoreIcon = score > 60 ? '⚠️' : (score > 30 ? '🔸' : '✅');\n    const plagiarismScoreHtml = `\n        <span style=\"font-size: 1.5em; font-weight: bold; color: ${scoreColor};\">${scoreIcon} ${score}%</span>\n    `;\n\n    // 6. Create Subject with dynamic data\n    const subject = `Your Assignment Analysis (ID: ${body.assignment_id}) is Ready!`;\n\n    // 7. Create attractive HTML Body\n    const emailBody = `\n<!DOCTYPE html>\n<html>\n<head>\n    <meta charset=\"UTF-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n</head>\n<body style=\"font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; max-width: 800px; margin: 0 auto; padding: 20px; background-color: #f8f9fa;\">\n    <div style=\"background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 10px 10px 0 0; text-align: center; color: white;\">\n        <h1 style=\"margin: 0; font-size: 2.2em; font-weight: 300;\">📊 Academic Assignment Report</h1>\n        <p style=\"margin: 10px 0 0 0; font-size: 1.1em; opacity: 0.9;\">Comprehensive Analysis & Recommendations</p>\n    </div>\n    \n    <div style=\"background: white; padding: 40px; border-radius: 0 0 10px 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);\">\n        <!-- Student Greeting -->\n        <div style=\"background: #e8f4fd; padding: 20px; border-radius: 8px; border-left: 4px solid #3498db; margin-bottom: 30px;\">\n            <h2 style=\"margin: 0 0 10px 0; color: #2c3e50; font-size: 1.4em;\">👋 Hello ${body.full_name}</h2>\n            <p style=\"margin: 0; color: #34495e;\">Your assignment analysis is complete and ready for review.</p>\n        </div>\n\n        <!-- Assignment Details -->\n        <div style=\"background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 30px;\">\n            <h3 style=\"margin: 0 0 15px 0; color: #2c3e50; font-size: 1.2em;\">📋 Assignment Information</h3>\n            <table style=\"width: 100%; border-collapse: collapse;\">\n                <tr>\n                    <td style=\"padding: 8px 0; color: #7f8c8d; width: 120px;\">Assignment ID:</td>\n                    <td style=\"padding: 8px 0; font-weight: 500;\">${body.assignment_id}</td>\n                </tr>\n                <tr>\n                    <td style=\"padding: 8px 0; color: #7f8c8d;\">File Name:</td>\n                    <td style=\"padding: 8px 0; font-weight: 500;\">${body.filename}</td>\n                </tr>\n                <tr>\n                    <td style=\"padding: 8px 0; color: #7f8c8d;\">Student ID:</td>\n                    <td style=\"padding: 8px 0; font-weight: 500;\">${body.student_id}</td>\n                </tr>\n            </table>\n        </div>\n\n        <!-- Summary Metrics -->\n        <div style=\"margin-bottom: 30px;\">\n            <h3 style=\"margin: 0 0 20px 0; color: #2c3e50; font-size: 1.3em; border-bottom: 2px solid #3498db; padding-bottom: 10px;\">📈 Summary Metrics</h3>\n            \n            <div style=\"display: flex; align-items: center; gap: 20px; flex-wrap: wrap;\">\n                <div style=\"flex: 1; min-width: 200px;\">\n                    <p style=\"margin: 0 0 8px 0; color: #7f8c8d; font-size: 0.9em;\">Status</p>\n                    <div style=\"background: #d5f4e6; color: #27ae60; padding: 12px; border-radius: 6px; text-align: center; font-weight: bold;\">\n                        ${body.status.toUpperCase()}\n                    </div>\n                </div>\n                <div style=\"flex: 1; min-width: 200px;\">\n                    <p style=\"margin: 0 0 8px 0; color: #7f8c8d; font-size: 0.9em;\">Plagiarism Score</p>\n                    <div style=\"background: ${score > 60 ? '#fdeaea' : score > 30 ? '#fef9e7' : '#e8f6f3'}; color: ${scoreColor}; padding: 12px; border-radius: 6px; text-align: center; font-size: 1.4em; font-weight: bold;\">\n                        ${plagiarismScoreHtml}\n                    </div>\n                </div>\n            </div>\n        </div>\n\n        <!-- Flagged Sections -->\n        <div style=\"margin-bottom: 30px;\">\n            <h3 style=\"margin: 0 0 15px 0; color: #2c3e50; font-size: 1.3em;\">\n                🚩 Flagged Sections Breakdown\n            </h3>\n            ${flaggedSectionsHtml}\n        </div>\n\n        <!-- Suggested Sources -->\n        <div style=\"margin-bottom: 30px;\">\n            <h3 style=\"margin: 0 0 15px 0; color: #2c3e50; font-size: 1.3em;\">\n                📚 Suggested Sources\n            </h3>\n            ${suggestedSourcesHtml}\n        </div>\n\n        <!-- Research Suggestions -->\n        <div style=\"margin-bottom: 30px;\">\n            <h3 style=\"margin: 0 0 15px 0; color: #2c3e50; font-size: 1.3em;\">\n                💡 Research Suggestions\n            </h3>\n            ${researchSuggestionsHtml}\n        </div>\n\n        <!-- Citation Recommendations -->\n        <div style=\"margin-bottom: 30px;\">\n            <h3 style=\"margin: 0 0 15px 0; color: #2c3e50; font-size: 1.3em;\">\n                📝 Citation Recommendations\n            </h3>\n            ${citationRecommendationsHtml}\n        </div>\n\n        <!-- Footer -->\n        <div style=\"text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid #ecf0f1; color: #7f8c8d; font-size: 0.9em;\">\n            <p style=\"margin: 0;\">This report was generated automatically. Please review the findings carefully.</p>\n            <p style=\"margin: 5px 0 0 0;\">Need assistance? Contact your academic advisor.</p>\n        </div>\n    </div>\n</body>\n</html>\n    `;\n\n    // Return the original data plus the new HTML strings and formatted email fields\n    return {\n        json: {\n            ...body, // Keep all original data\n            flaggedSectionsHtml,\n            suggestedSourcesHtml,\n            researchSuggestionsHtml,\n            citationRecommendationsHtml,\n            plagiarismScoreHtml,\n            // New fields for email\n            subject: subject,\n            body: emailBody\n        }\n    };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -208,
+        208
+      ],
+      "id": "dfe54554-5ae2-4c74-8300-5ef55b5de1d9",
+      "name": "Code in JavaScript",
+      "notesInFlow": true,
+      "notes": "creates attractive HTML for both Subject and Body fields"
+    },
+    {
+      "parameters": {
+        "fromEmail": "=afritioalberts1216@gmail.com",
+        "toEmail": "={{ $json.to }}",
+        "subject": "={{ $json.subject }}",
+        "html": "={{ $json.body }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1744,
+        224
+      ],
+      "id": "30b1ce8f-7748-4bc2-9671-bc1b25440445",
+      "name": "Send email to student",
+      "webhookId": "88b9ac64-1ce7-46a0-9919-0556ec2e40a1",
+      "credentials": {
+        "smtp": {
+          "id": "47GRusI0dPvo43GM",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "=afritioalberts1216@gmail.com",
+        "toEmail": "={{ $json.To }}",
+        "subject": "={{ $json.subject }}",
+        "html": "={{ $json.body }}",
+        "options": {
+          "attachments": "=data"
+        }
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1728,
+        816
+      ],
+      "id": "1cab7a68-5c23-48a3-9e97-c80d16c7f875",
+      "name": "Send email to instructor",
+      "webhookId": "88b9ac64-1ce7-46a0-9919-0556ec2e40a1",
+      "credentials": {
+        "smtp": {
+          "id": "47GRusI0dPvo43GM",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "formTitle": "Assignment Submission",
+        "formDescription": "Automatic submission of the assignment to the instructor with plagiarism free testimonial",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Instroctor Email",
+              "fieldType": "email",
+              "placeholder": "teacher@email.com",
+              "requiredField": true
+            },
+            {
+              "fieldName": "token",
+              "fieldType": "hiddenField"
+            }
+          ]
+        },
+        "options": {
+          "buttonLabel": "Submit to teacher",
+          "path": "submit-to-instructor"
+        }
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.3,
+      "position": [
+        -832,
+        800
+      ],
+      "id": "fae0ac56-8dad-4775-a1fd-4f9b56d2a8f8",
+      "name": "Instructor email submission",
+      "webhookId": "c660754f-1a94-426a-aa17-447b19b85908"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Function to generate a URL with data appended as a query parameter (token)\nconst { randomBytes } = require('crypto');\n\nreturn items.map(item => {\n    const body = item.json.body;\n    \n    // 1. Get the full webhook/form URL from the previous node's output\n    // Assuming ' Form URLs' is the *base* URL ending before the token needs to be appended.\n    const formBaseUrl = $input.first().json[' Form URLs'];\n    \n    // Generate unique token components\n    const randomSuffix = randomBytes(2).readUInt16BE(0); // 4-digit random number\n    \n    // 2. Create the unique token string (This is the data you want to track)\n    const uniqueToken = `${body.assignment_id}-${body.student_id}-${randomSuffix}`;\n    \n    // 3. Construct the FINAL URL with the token as a query parameter\n    // The format is: BASE_URL + ?token= + TOKEN\n    const formCallIdUrl = `${formBaseUrl}?token=${encodeURIComponent(uniqueToken)}`;\n\n    // Note: The previous logic combined the URL and the token with a hyphen, \n    // resulting in the invalid URL: http://.../UUID-15-4-48198.\n    // The base URL should be the form's raw webhook URL up to the UUID part.\n    \n    // Prepare data for storage (using the token, not the full URL)\n    const assignment_form_links = {\n        // Store the token that holds the assignment data\n        id_token: uniqueToken, \n        assignment_id: body.assignment_id,\n        student_id: body.student_id,\n        student_email: body.student_email,\n        full_name: body.full_name,\n        student_id_self: body.student_id_self,\n        student_name: body.fullname, // Check if 'fullname' is correct or should be 'full_name'\n        filename: body.filename,\n        plagiarism_score: body.plagiarism_score, \n    };\n    \n    // Return both the original data and the formatted URL\n    return {\n        json: {\n            ...body,\n            // Outputting the correct URL format as requested\n            formCallId: formCallIdUrl,\n            assignment_form_links: assignment_form_links,\n            // Keep the previous field for reference if needed, adjusted to use the URL\n            instructorFormUrl: formCallIdUrl \n        }\n    };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        96,
+        400
+      ],
+      "id": "c09b798f-7145-4771-8953-a49c18d74a19",
+      "name": "Code in JavaScript1",
+      "notesInFlow": true,
+      "notes": "generate a URL with data appended as a query parameter (token)"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "8dc73e1a-f131-4a06-a34d-7f7b298a623d",
+              "name": " Form URLs",
+              "value": "http://localhost:5678/form-test/submit-to-instructor",
+              "type": "string"
+            },
+            {
+              "id": "03e758dc-9cb9-4115-a194-a4366415ff61",
+              "name": "body.assignment_id",
+              "value": "={{ $json.body.assignment_id }}",
+              "type": "number"
+            },
+            {
+              "id": "522a4e0e-98e0-40a0-b984-380afc92de33",
+              "name": "body.student_id",
+              "value": "={{ $json.body.student_id }}",
+              "type": "number"
+            },
+            {
+              "id": "3d48c8ad-ff90-4a0c-9da9-77a4e11dcb1c",
+              "name": "body.filename",
+              "value": "={{ $json.body.filename }}",
+              "type": "string"
+            },
+            {
+              "id": "d51cc2a0-a60d-4843-aa79-88188434899d",
+              "name": "body.student_email",
+              "value": "={{ $json.body.student_email }}",
+              "type": "string"
+            },
+            {
+              "id": "62420395-160e-40ae-92aa-42d03d5a7022",
+              "name": "body.full_name",
+              "value": "={{ $json.body.full_name }}",
+              "type": "string"
+            },
+            {
+              "id": "8786bf74-6637-42ff-9f93-13de72983659",
+              "name": "body.student_id_self",
+              "value": "={{ $json.body.student_id_self }}",
+              "type": "string"
+            },
+            {
+              "id": "ba71011a-264d-4a33-b242-cb9e02c64ede",
+              "name": "body.plagiarism_score",
+              "value": "={{ $json.body.plagiarism_score }}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -208,
+        400
+      ],
+      "id": "6266e9d6-5613-4a98-a9a7-b7c737d55e9b",
+      "name": "Set Form URLs",
+      "notesInFlow": true,
+      "notes": "Here set Form URLs"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "23612e38-0f2d-4814-ad17-eac6251a8cbb",
+              "name": "to",
+              "value": "={{ $json.to }}",
+              "type": "string"
+            },
+            {
+              "id": "97aa4dcb-6212-4863-b0d8-82ab68239011",
+              "name": "subject",
+              "value": "={{ $json.subject }}",
+              "type": "string"
+            },
+            {
+              "id": "99e2fb85-cc6d-4bf1-a92b-0b32ccb1a23d",
+              "name": "body",
+              "value": "={{ $json.body }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1488,
+        224
+      ],
+      "id": "8e6f0c84-d43e-43f5-9c14-3a33f42d3e38",
+      "name": "Set Subject, Body"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Function Node 2: Generates the HTML section for the button/offer\nreturn items.map(item => {\n    // 1. Retrieve the form_call_id\n    const formCallId = $input.first().json.formCallId;\n\n    if (!formCallId) {\n        // Return a safe fallback if ID is missing\n        return { json: { body_button_section: '' } };\n    }\n\n    const titleText = \"🚀 Assignment Submission Just Got Easier!\";\n    const callToAction = \"Do you want automatic submission of this assignment with a **guaranteed plagiarism-free testimonial**?\";\n    const buttonText = \"Yes, Submit for Me! ✨\";\n    const buttonLink = formCallId;\n\n    // 2. Generate ONLY the INNER HTML CONTENT\n    const buttonSectionHtml = `\n    <div style=\"\n        max-width: 600px;\n        margin: 30px auto 0 auto; \n        padding: 30px; \n        background-color: #f8f9fa; \n        border: 1px solid #e0e6ea; \n        border-radius: 10px;\n        box-shadow: 0 2px 4px rgba(0,0,0,0.05);\n        text-align: center;\n    \">\n        \n        <h3 style=\"color: #4a90e2; font-size: 1.5em; margin: 0 0 15px 0; font-weight: 600;\">${titleText}</h3>\n\n        <div style=\"\n            background: #e8f7ff; \n            padding: 20px; \n            border-radius: 8px; \n            border-left: 5px solid #3498db; \n            margin-bottom: 25px;\n        \">\n            <p style=\"margin: 0; color: #2c3e50; font-size: 1.1em; line-height: 1.5;\">\n                ${callToAction.replace('**', '<strong>').replace('**', '</strong>')}\n            </p>\n        </div>\n\n        <a href=\"${buttonLink}\" \n           target=\"_blank\" \n           style=\"display: inline-block; \n                  padding: 12px 25px; \n                  background-color: #2ecc71; \n                  color: #ffffff; \n                  text-decoration: none; \n                  border-radius: 6px; \n                  font-size: 1.0em; \n                  font-weight: bold; \n                  transition: background-color 0.3s ease; \n                  box-shadow: 0 4px 6px rgba(46, 204, 113, 0.4);\">\n            ${buttonText}\n        </a>\n        \n        <p style=\"margin: 15px 0 0 0; color: #95a5a6; font-size: 0.85em;\">\n            Your next click securely initiates the submission process.\n        </p>\n\n    </div>\n    `;\n\n    // 3. Store the inner HTML in a new key (e.g., body_button_section)\n    return {\n        json: {\n            ...item.json,\n            body_button_section: buttonSectionHtml \n        }\n    };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        592,
+        400
+      ],
+      "id": "fd320cc2-99aa-4b90-a551-170eee94f108",
+      "name": "Code in JavaScript3",
+      "notesInFlow": true,
+      "retryOnFail": true,
+      "notes": "It accepts an item containing the form_call_id and generates an HTML body for an email/message."
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d2cbd554-dcca-4023-bd6e-6e08168fe1c3",
+              "name": "body_button_section",
+              "value": "={{ $json.body_button_section }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        784,
+        400
+      ],
+      "id": "5ef00686-2308-47a8-ad34-a985f7511c10",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "db281bd0-6144-4132-8ac0-f5976e9031d6",
+              "name": "to",
+              "value": "={{ $json.student_email }}",
+              "type": "string"
+            },
+            {
+              "id": "c122c680-bb10-472d-b6cb-b85d7e6e0a00",
+              "name": "subject",
+              "value": "={{ $json.subject }}",
+              "type": "string"
+            },
+            {
+              "id": "61f0b730-d86e-442e-98ed-fb3bfd5c182d",
+              "name": "body",
+              "value": "={{ $json.body }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        96,
+        208
+      ],
+      "id": "1296e187-9387-49cc-9350-7549e1976e88",
+      "name": "Edit Fields2"
+    },
+    {
+      "parameters": {
+        "jsCode": "/**\n * n8n Function Node to combine two separate HTML strings into one email body\n * and ensure only a single item is passed to the next node (Email).\n */\nfunction mergeEmailBody(items) {\n    // Check for the required items\n    if (items.length < 2) {\n        throw new Error(\"Expected at least two items from the Merge Node (Append mode).\");\n    }\n\n    // Item 0: Contains the main email data (to, subject, body)\n    const mainItem = items[0].json;\n\n    // Item 1: Contains the button/offer HTML content\n    const buttonItem = items[1].json;\n\n    // Get the two body parts, defaulting to an empty string for safety\n    const mainBody = mainItem.body || '';\n    const buttonSection = buttonItem.body_button_section || '';\n    \n    // --- Body Injection Logic ---\n\n    let finalBody;\n\n    // 1. Check if the main body is valid HTML\n    if (mainBody.includes('</body>')) {\n        // 2. Safely inject the button section before the closing </body> tag\n        // Use a global replace in case there are multiple </body> tags (though unlikely in a valid email)\n        // We use the last occurrence of </body> to ensure it's near the end of the content.\n        const lastBodyTagIndex = mainBody.lastIndexOf('</body>');\n        \n        if (lastBodyTagIndex !== -1) {\n            // Split the string: part before </body> + button HTML + </body>\n            const partBeforeBodyEnd = mainBody.substring(0, lastBodyTagIndex);\n            const partAfterBodyEnd = mainBody.substring(lastBodyTagIndex);\n\n            finalBody = partBeforeBodyEnd + buttonSection + '\\n' + partAfterBodyEnd;\n\n        } else {\n            // Fallback: Just append if </body> is somehow missing\n            finalBody = mainBody + buttonSection;\n        }\n\n    } else {\n        // If mainBody is not HTML, just return the main body or throw an error\n        console.warn(\"Main body does not contain </body> tag. Appending content.\");\n        finalBody = mainBody + '\\n' + buttonSection;\n    }\n\n    // --- Output Generation ---\n\n    // Create the final, single item for the Email node\n    const outputItem = {\n        json: {\n            to: mainItem.to,\n            subject: mainItem.subject,\n            body: finalBody\n            // Note: body_button_section is *not* included in the final output\n        }\n    };\n\n    // Return an array with only the single, combined item.\n    // This solves the issue of the Email node failing on the second, empty item.\n    return [outputItem];\n}\n\nreturn mergeEmailBody(items);"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1264,
+        224
+      ],
+      "id": "b8a27b16-47dc-4e9e-bcc7-92b66df68d09",
+      "name": "Code in JavaScript4"
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "value": "NZHUb13u3AddzNQs",
+          "mode": "list",
+          "cachedResultName": "assignment_form_links",
+          "cachedResultUrl": "/projects/6OrcpSxBsWDxdgSD/datatables/NZHUb13u3AddzNQs"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id_token": "={{ $json.assignment_form_links.form_call_id_token }}",
+            "formCallId": "={{ $json.instructorFormUrl }}",
+            "assignment_id": "={{ $json.assignment_form_links.assignment_id }}",
+            "student_id": "={{ $json.assignment_form_links.student_id }}",
+            "student_name": "={{ $json.assignment_form_links.full_name }}",
+            "student_email": "={{ $json.assignment_form_links.student_email }}",
+            "student_id_self": "={{ $json.assignment_form_links.student_id_self }}",
+            "filename": "={{ $json.assignment_form_links.filename }}",
+            "plagiarism_score": "={{ $json.assignment_form_links.plagiarism_score }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "id_token",
+              "displayName": "id_token",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "formCallId",
+              "displayName": "formCallId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "assignment_id",
+              "displayName": "assignment_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "student_id",
+              "displayName": "student_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "student_name",
+              "displayName": "student_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "student_email",
+              "displayName": "student_email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "student_id_self",
+              "displayName": "student_id_self",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "filename",
+              "displayName": "filename",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "plagiarism_score",
+              "displayName": "plagiarism_score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        368,
+        400
+      ],
+      "id": "7b1a0cd6-2da9-4c95-96ec-7bf7e73d50fe",
+      "name": "Insert row"
+    },
+    {
+      "parameters": {
+        "operation": "completion",
+        "completionTitle": "Check your email for confirmation",
+        "limitWaitTime": true,
+        "resumeAmount": 0.05,
+        "resumeUnit": "minutes",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.form",
+      "typeVersion": 2.3,
+      "position": [
+        80,
+        1088
+      ],
+      "id": "33483ac4-03ba-4a57-8202-eee7705f59f3",
+      "name": "Form",
+      "webhookId": "f9ef5932-acac-42c0-b90b-67ec1c9ef533"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ba6c6c8c-781a-460c-b964-750753f7dce4",
+              "name": "Instroctor Email",
+              "value": "={{ $json[\"Instroctor Email\"] }}",
+              "type": "string"
+            },
+            {
+              "id": "712456e9-04a2-4424-a4e1-5803f85844bb",
+              "name": "token",
+              "value": "={{ $json.token }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -224,
+        800
+      ],
+      "id": "fe40fb10-44f2-461b-81cd-fe0d4e56fbcf",
+      "name": "Edit Fields4"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -240,
+        1088
+      ],
+      "id": "8193ee3a-474e-492e-bcc4-0905701a6fce",
+      "name": "Wait",
+      "webhookId": "d6699f18-8211-4adb-ba64-9f57cbf36510"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "NZHUb13u3AddzNQs",
+          "mode": "list",
+          "cachedResultName": "assignment_form_links",
+          "cachedResultUrl": "/projects/6OrcpSxBsWDxdgSD/datatables/NZHUb13u3AddzNQs"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id_token",
+              "keyValue": "={{ $json.token }}"
+            }
+          ]
+        },
+        "limit": 1
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        96,
+        800
+      ],
+      "id": "59945d1f-c153-4b12-b282-50a47cbeed66",
+      "name": "Get row(s)"
+    },
+    {
+      "parameters": {
+        "fileSelector": "=/app/data/uploads/{{ $json.filename }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        608,
+        1056
+      ],
+      "id": "c4fb1509-903e-437e-b8b6-dab134f3040f",
+      "name": "Read/Write Files from Disk"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "filename",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        368,
+        1056
+      ],
+      "id": "88267b7a-353d-4f12-a8f7-a3cc5e5f4648",
+      "name": "Split Out"
+    },
+    {
+      "parameters": {
+        "jsCode": "/**\n * n8n Function Node to format the submission confirmation email for the instructor.\n * It uses the retrieved assignment data to populate a styled HTML body.\n */\nreturn items.map(item => {\n    const data = item.json;\n\n    // --- 1. Define Email Fields ---\n\n    // The 'To' address comes directly from the instructor's email (assuming it was retrieved \n    // or passed through, if not, use the instructor_email property from a previous node if available)\n    const toEmail = data.instructor_email || \"diguwasoft@gmail.com\"; // Using the sample email for safety\n    \n    // The subject should be clear and contain key identifiers\n    const subject = `Auto Submittion Of Assignment  From: ${data.student_name}`;\n\n    // --- 2. Generate HTML Body Content ---\n\n    // Define color codes based on plagiarism score (assuming score is a string, convert to number)\n    const score = parseFloat(data.plagiarism_score);\n    const scoreColor = score > 60 ? '#e74c3c' : (score > 30 ? '#f39c12' : '#2ecc71');\n    const scoreText = `${score}%`;\n\n    const emailBody = `\n<!DOCTYPE html>\n<html>\n<head>\n    <meta charset=\"UTF-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n</head>\n<body style=\"font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 650px; margin: 0 auto; padding: 20px; background-color: #f7f9fc;\">\n    \n    <div style=\"background-color: #ffffff; padding: 30px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.05); border-top: 5px solid #2ecc71;\">\n        \n        <h1 style=\"color: #2c3e50; font-size: 1.8em; margin: 0 0 15px 0;\">\n            🚀 Automated Submission Notification\n        </h1>\n        <p style=\"color: #7f8c8d; margin-bottom: 25px; border-bottom: 1px solid #eee; padding-bottom: 15px;\">\n            This assignment has been automatically submitted to the system with a plagiarism free testimonial from the student.\n        </p>\n\n        <div style=\"margin-bottom: 30px; background-color: #e8f7ff; padding: 20px; border-radius: 8px;\">\n            <h2 style=\"color: #3498db; font-size: 1.2em; margin-top: 0; border-bottom: 2px solid #3498db; padding-bottom: 5px;\">\n                Assignment Details\n            </h2>\n            <table style=\"width: 100%; border-collapse: collapse;\">\n                <tr>\n                    <td style=\"padding: 8px 0; color: #555; width: 140px; font-weight: bold;\">Name of Student:</td>\n                    <td style=\"padding: 8px 0;\">${data.student_name || 'N/A'}</td>\n                </tr>\n                <tr>\n                    <td style=\"padding: 8px 0; color: #555; font-weight: bold;\">Student ID (Self):</td>\n                    <td style=\"padding: 8px 0;\">${data.student_id_self || 'N/A'}</td>\n                </tr>\n                <tr>\n                    <td style=\"padding: 8px 0; color: #555; font-weight: bold;\">Student Email:</td>\n                    <td style=\"padding: 8px 0;\">${data.student_email || 'N/A'}</td>\n                </tr>\n                <tr>\n                    <td style=\"padding: 8px 0; color: #555; font-weight: bold;\">File Name:</td>\n                    <td style=\"padding: 8px 0;\">${data.filename || 'N/A'}</td>\n                </tr>\n                <tr>\n                    <td style=\"padding: 8px 0; color: #555; font-weight: bold;\">Plagiarism Score:</td>\n                    <td style=\"padding: 8px 0; font-weight: bold; color: ${scoreColor}; font-size: 1.1em;\">\n                        ${scoreText || 'N/A'}\n                    </td>\n                </tr>\n            </table>\n        </div>\n\n        <div style=\"text-align: center; margin-top: 30px; padding-top: 15px; border-top: 1px solid #eee;\">\n            <p style=\"margin-bottom: 15px; color: #555;\">\n                Automated Submision  and Plagiarism  testmonial brought to you By: Acadamic Assignment Helper\n            </p>\n            \n        </div>\n        \n    </div>\n</body>\n</html>\n    `;\n    \n    // --- 3. Return the Final Item ---\n    \n    return {\n        json: {\n            // Include original data\n            ...data,\n            // New fields for the Email node\n            To: toEmail,\n            subject: subject,\n            body: emailBody // The generated HTML body\n        }\n    };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        368,
+        800
+      ],
+      "id": "c301c83e-a990-4a12-9465-4ce7d6eed99b",
+      "name": "Code in JavaScript2",
+      "notesInFlow": true,
+      "notes": "Instructor Notification Generator"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f2163e9e-9a95-48a7-9605-54e4d7ef52b1",
+              "name": "To",
+              "value": "={{ $json.To }}",
+              "type": "string"
+            },
+            {
+              "id": "24af2e12-c73f-41de-8954-0a33a6cb8ab7",
+              "name": "subject",
+              "value": "={{ $json.subject }}",
+              "type": "string"
+            },
+            {
+              "id": "2954a9d5-e1a2-40a4-aea6-f35845c550f6",
+              "name": "body",
+              "value": "={{ $json.body }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        608,
+        800
+      ],
+      "id": "6cbfab8b-6a2a-4240-b681-1b158e384a6f",
+      "name": "Edit Fields1"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1024,
+        224
+      ],
+      "id": "67d39ce7-60f2-4419-bdb3-2a5778489fbf",
+      "name": "Merge1"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1104,
+        816
+      ],
+      "id": "b9fbab32-65d6-406e-9b84-a48f54ff4e43",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "jsCode": "// This assumes the Merge (Append) node passed through two items, \n// where item 0 has the email data and item 1 has the binary data under 'data'.\n\nif (items.length < 2) {\n    // If only one item, assume it's already correct or the binary was skipped.\n    return items; \n}\n\n// Item 1 (index 0) contains the email metadata (To, subject, body)\nconst emailItem = items[0];\n\n// Item 2 (index 1) contains the binary data. \n// Assuming the Read Binary node output its binary data property as 'data' \nconst binaryItem = items[1];\n\n// Check if Item 2 has binary data\nif (binaryItem.binary && binaryItem.binary.data) {\n    // 1. Initialize the binary property on the main item if it doesn't exist\n    if (!emailItem.binary) {\n        emailItem.binary = {};\n    }\n\n    // 2. Attach the binary data from the second item onto the first item\n    // The key 'data' here must match the attachment name you use in the Send Email node.\n    emailItem.binary.data = binaryItem.binary.data;\n\n    // 3. Return ONLY the first item, which now contains both JSON and Binary data\n    return [emailItem];\n}\n\n// If no binary data was found, just return the first item to proceed\nreturn [emailItem];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1488,
+        816
+      ],
+      "id": "1e29a926-73fe-41ec-b434-91da4c7369bf",
+      "name": "Code in JavaScript5",
+      "notesInFlow": true,
+      "notes": "Merge Node (if it's still outputting two items) OR change your last Set Node to a Function Node."
+    },
+    {
+      "parameters": {
+        "jsCode": "/**\n * Function Node for successful instructor email delivery notification.\n * This node combines data from the two input items resulting from the Merge node.\n */\nfunction emailSuccessNotification(items) {\n    // Assuming Item 0 has student details (from Split)\n    const studentData = items[0].json;\n    \n    // Assuming Item 1 has the Email Node's output (response, envelope.to)\n    const emailResponseData = items[1].json; \n    \n    // Fallback/Cleanup for variables\n    const toEmail = studentData.student_email;\n    const studentName = studentData.student_name || studentData.full_name || 'Student';\n    const assignmentId = studentData.assignment_id;\n    const instructorEmail = emailResponseData.envelope ? emailResponseData.envelope.to[0] : 'your instructor'; \n\n    // --- Define Email Fields ---\n    const subject = `Confirmation: Your Assignment ${assignmentId} Was Submitted!`;\n\n    // --- Generate HTML Body ---\n    const emailBody = `\n<!DOCTYPE html>\n<html>\n<head>\n    <meta charset=\"UTF-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n</head>\n<body style=\"font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f0fdf4;\">\n    \n    <div style=\"background-color: #ffffff; padding: 30px; border-radius: 10px; border-left: 5px solid #2ecc71; box-shadow: 0 4px 8px rgba(0,0,0,0.05);\">\n        \n        <h1 style=\"color: #2ecc71; font-size: 1.8em; margin: 0 0 10px 0;\">\n            🎉 Success! Submission Confirmed\n        </h1>\n        <p style=\"color: #34495e; font-size: 1.1em; margin-bottom: 25px;\">\n            Hello ${studentName},\n        </p>\n\n        <div style=\"background-color: #e6fff1; padding: 15px; border-radius: 6px; margin-bottom: 20px;\">\n            <p style=\"margin: 0; color: #27ae60; font-weight: bold;\">\n                Your assignment (ID: ${assignmentId}) has been successfully delivered to your instructor's email (${instructorEmail}).\n            </p>\n        </div>\n\n        <p style=\"color: #555;\">\n            The automated submission process is now complete. The email included your full report and the assignment file.\n        </p>\n\n        <div style=\"text-align: center; margin-top: 30px; padding-top: 15px; border-top: 1px solid #eee; color: #7f8c8d; font-size: 0.9em;\">\n            <p style=\"margin: 0;\">You do not need to take any further action.</p>\n        </div>\n    </div>\n</body>\n</html>\n    `;\n\n    // --- Return Final Item (Only the item with email details) ---\n    // We only return ONE item for the student notification email\n    return [{\n        json: {\n            To: toEmail,\n            subject: subject,\n            body: emailBody\n        }\n    }];\n}\n\nreturn emailSuccessNotification(items);"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2640,
+        592
+      ],
+      "id": "403de67a-1fc5-4a81-8674-6bdce6aab1a3",
+      "name": "Email Sent Successfully",
+      "notes": "This node generates a positive confirmation email to the student."
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "student_name, student_email, filename, assignment_id",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        368,
+        576
+      ],
+      "id": "84d3470f-c06b-4f9d-9064-90f88d325256",
+      "name": "Split Out1"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "fieldsToMatchString": "assignment_id",
+        "joinMode": "keepEverything",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1984,
+        592
+      ],
+      "id": "9c7700ee-fa4d-4f1f-b1b9-dc69fa66a01d",
+      "name": "Merge2"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "65561782-fa0c-4209-a52a-3dac984b65ef",
+              "name": "To",
+              "value": "={{ $json.To }}",
+              "type": "string"
+            },
+            {
+              "id": "d831317b-4029-42fb-b333-23e31512bba8",
+              "name": "subject",
+              "value": "={{ $json.subject }}",
+              "type": "string"
+            },
+            {
+              "id": "0208372e-d50b-4dfe-840a-6957341916e5",
+              "name": "body",
+              "value": "={{ $json.body }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2848,
+        592
+      ],
+      "id": "b64f45cd-9ecb-4c69-b3ca-adf13c161ddb",
+      "name": "Edit Fields3"
+    },
+    {
+      "parameters": {
+        "fromEmail": "afritioalberts1216@gmail.com",
+        "toEmail": "={{ $json.To }}",
+        "subject": "={{ $json.subject }}",
+        "html": "={{ $json.body }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        3056,
+        592
+      ],
+      "id": "cb34bf8b-ff1d-43ea-8b0f-f108e9dfef15",
+      "name": "Send email",
+      "webhookId": "aec01b6c-4201-4ed9-a91e-7345376b1792",
+      "credentials": {
+        "smtp": {
+          "id": "47GRusI0dPvo43GM",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "/**\n * n8n Function Node to combine data from two merged items into a single\n * structured log record and return only one item for database insertion.\n */\nfunction createLogRecord(items) {\n    if (items.length < 2) {\n        throw new Error(\"Expected at least two items from the preceding Merge node.\");\n    }\n\n    // Item 0: Contains student/assignment data (from Split/Set before Email Node)\n    const studentData = items[0].json; \n    \n    // Item 1: Contains the email response data (from Email Node output)\n    const responseData = items[1].json; \n\n    // --- 1. Extract Key Logging Data ---\n    \n    // Use response data from Item 1\n    const fullResponse = responseData.response;\n    \n    // Extract the critical response code\n    const responseCodeMatch = fullResponse ? fullResponse.match(/^(\\d{3} \\d\\.\\d\\.\\d)/) : null;\n    const logResponseCode = responseCodeMatch ? responseCodeMatch[1] : 'N/A';\n    \n    // Extract instructor email safely (from Item 1)\n    const instructorEmail = responseData.envelope && responseData.envelope.to && responseData.envelope.to.length > 0 \n                            ? responseData.envelope.to[0] \n                            : 'Unknown Instructor';\n    \n    // Determine the simple status\n    const logStatus = logResponseCode.startsWith('250') ? 'SUCCESS' : 'FAILURE_CHECK';\n    \n    // --- 2. Create the Log Record Object by combining data ---\n    \n    const logRecord = {\n        // Core assignment identifiers (from Item 0)\n        assignment_id: studentData.assignment_id || 'N/A',\n        student_email: studentData.To || studentData.student_email || 'N/A',\n        \n        // Submission tracking data (mostly from Item 1)\n        instructor_email: instructorEmail,\n        log_response_code: logResponseCode,\n        log_timestamp: new Date().toISOString(), \n        log_message_id: responseData.messageId || 'N/A',\n        log_status: logStatus,\n        \n        // Optional: save the full response text for deep logging\n        log_full_response: fullResponse\n    };\n    \n    // --- 3. Return ONLY ONE ITEM for Database Insertion ---\n    // This is the critical change: no more .map, just return [ { ... } ]\n    return [{\n        json: {\n            log_submission_record: logRecord\n        }\n    }];\n}\n\nreturn createLogRecord(items);"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2224,
+        816
+      ],
+      "id": "8a9c25f7-8b2f-4822-9098-0009d668800f",
+      "name": "Prepare Log Record"
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "value": "Lsmh24FtKlHTHg6M",
+          "mode": "list",
+          "cachedResultName": "log_submission",
+          "cachedResultUrl": "/projects/6OrcpSxBsWDxdgSD/datatables/Lsmh24FtKlHTHg6M"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "assignment_id": "={{ $json.log_submission_record.assignment_id }}",
+            "student_email": "={{ $json.log_submission_record.student_email }}",
+            "instructor_email": "={{ $json.log_submission_record.instructor_email }}",
+            "log_response_code": "={{ $json.log_submission_record.log_response_code }}",
+            "log_timestamp": "={{ $json.log_submission_record.log_timestamp }}",
+            "log_message_id": "={{ $json.log_submission_record.log_message_id }}",
+            "log_status": "={{ $json.log_submission_record.log_status }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "assignment_id",
+              "displayName": "assignment_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "student_email",
+              "displayName": "student_email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "instructor_email",
+              "displayName": "instructor_email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "log_response_code",
+              "displayName": "log_response_code",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "log_timestamp",
+              "displayName": "log_timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "log_message_id",
+              "displayName": "log_message_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "log_status",
+              "displayName": "log_status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        2640,
+        816
+      ],
+      "id": "90a9e12a-c2b8-4813-9787-c6e71642fc59",
+      "name": "Insert row1"
+    }
+  ],
+  "pinData": {
+    "Webhook": [
+      {
+        "json": {
+          "headers": {
+            "host": "n8n:5678",
+            "user-agent": "python-requests/2.32.5",
+            "accept-encoding": "gzip, deflate",
+            "accept": "*/*",
+            "connection": "keep-alive",
+            "content-length": "1474",
+            "content-type": "application/json"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "assignment_id": 15,
+            "filename": "The Role of Quantum Computing in Accelerating Drug Discovery and Materials Science.pdf",
+            "student_id": 4,
+            "student_id_self": "WCU13d/1366",
+            "student_email": "afritioalberts1216@gmail.com",
+            "full_name": "Natinael Samuel",
+            "plagiarism_score": 75.12,
+            "flagged_sections": [
+              {
+                "chunk_id": 1,
+                "similarity": 0.7512,
+                "source_id": 19,
+                "source_title": "Quantum Machine Learning for Drug Discovery",
+                "excerpt": "The Role of Quantum Computing in Accelerating Drug Discovery and Materials Science Quantum computing promises to revolutionize chemistry and materials science by circumventing the computational limita..."
+              }
+            ],
+            "suggested_sources": [
+              "Quantum Machine Learning for Drug Discovery"
+            ],
+            "research_suggestions": [
+              "Quantum computing can revolutionize chemistry and materials science by directly modeling quantum mechanical phenomena.",
+              "In drug discovery, quantum computing can accelerate the early stages by predicting the binding affinity of drug candidates to target proteins.",
+              "In materials science, quantum simulation allows for the design of novel compounds and optimization of their performance metrics before physical synthesis.",
+              "Quantum algorithms like the Variational Quantum Eigensolver (VQE) can accurately determine ground-state energy of complex crystalline structures."
+            ],
+            "citation_recommendations": [
+              "Quantum Computing in Chemistry: Progress and Challenges",
+              "Recent Advances in Quantum Algorithms for Chemistry"
+            ],
+            "status": "done"
+          },
+          "webhookUrl": "http://n8n:5678/webhook-test/notify-analysis-done",
+          "executionMode": "test"
+        }
+      }
+    ],
+    "Code in JavaScript": [
+      {
+        "json": {
+          "assignment_id": 15,
+          "filename": "The Role of Quantum Computing in Accelerating Drug Discovery and Materials Science.pdf",
+          "student_id": 4,
+          "student_id_self": "WCU13d/1366",
+          "student_email": "afritioalberts1216@gmail.com",
+          "full_name": "Natinael Samuel",
+          "plagiarism_score": 75.12,
+          "flagged_sections": [
+            {
+              "chunk_id": 1,
+              "similarity": 0.7512,
+              "source_id": 19,
+              "source_title": "Quantum Machine Learning for Drug Discovery",
+              "excerpt": "The Role of Quantum Computing in Accelerating Drug Discovery and Materials Science Quantum computing promises to revolutionize chemistry and materials science by circumventing the computational limita..."
+            }
+          ],
+          "suggested_sources": [
+            "Quantum Machine Learning for Drug Discovery"
+          ],
+          "research_suggestions": [
+            "Quantum computing can revolutionize chemistry and materials science by directly modeling quantum mechanical phenomena.",
+            "In drug discovery, quantum computing can accelerate the early stages by predicting the binding affinity of drug candidates to target proteins.",
+            "In materials science, quantum simulation allows for the design of novel compounds and optimization of their performance metrics before physical synthesis.",
+            "Quantum algorithms like the Variational Quantum Eigensolver (VQE) can accurately determine ground-state energy of complex crystalline structures."
+          ],
+          "citation_recommendations": [
+            "Quantum Computing in Chemistry: Progress and Challenges",
+            "Recent Advances in Quantum Algorithms for Chemistry"
+          ],
+          "status": "done",
+          "flaggedSectionsHtml": "\n            <div style=\"border-left: 4px solid #f39c12; padding: 10px; background-color: #fcf3cf; margin-bottom: 15px; border-radius: 4px;\">\n                <p style=\"margin: 0; font-size: 1.1em; color: #e67e22;\">\n                    <strong>Similarity:</strong> 75.12%\n                </p>\n                <p style=\"margin: 5px 0;\">\n                    <strong>Source:</strong> Quantum Machine Learning for Drug Discovery\n                </p>\n                <p style=\"margin: 0; font-style: italic; color: #5c6a78;\">\n                    Excerpt: \"The Role of Quantum Computing in Accelerating Drug Discovery and Materials Science Quantum computing promises to revolutionize chemistry and materials...\"\n                </p>\n            </div>\n        ",
+          "suggestedSourcesHtml": "<ul style=\"padding-left: 20px;\">\n        <li style=\"margin-bottom: 5px; color: #34495e;\">Quantum Machine Learning for Drug Discovery</li>\n    </ul>",
+          "researchSuggestionsHtml": "<ol style=\"padding-left: 20px;\">\n        <li style=\"margin-bottom: 5px; color: #34495e;\">Quantum computing can revolutionize chemistry and materials science by directly modeling quantum mechanical phenomena.</li>\n    \n        <li style=\"margin-bottom: 5px; color: #34495e;\">In drug discovery, quantum computing can accelerate the early stages by predicting the binding affinity of drug candidates to target proteins.</li>\n    \n        <li style=\"margin-bottom: 5px; color: #34495e;\">In materials science, quantum simulation allows for the design of novel compounds and optimization of their performance metrics before physical synthesis.</li>\n    \n        <li style=\"margin-bottom: 5px; color: #34495e;\">Quantum algorithms like the Variational Quantum Eigensolver (VQE) can accurately determine ground-state energy of complex crystalline structures.</li>\n    </ol>",
+          "citationRecommendationsHtml": "<ul style=\"padding-left: 20px;\">\n        <li style=\"margin-bottom: 5px; color: #34495e;\">Quantum Computing in Chemistry: Progress and Challenges</li>\n    \n        <li style=\"margin-bottom: 5px; color: #34495e;\">Recent Advances in Quantum Algorithms for Chemistry</li>\n    </ul>",
+          "plagiarismScoreHtml": "\n        <span style=\"font-size: 1.5em; font-weight: bold; color: #e74c3c;\">⚠️ 75.12%</span>\n    ",
+          "subject": "Your Assignment Analysis (ID: 15) is Ready!",
+          "body": "\n<!DOCTYPE html>\n<html>\n<head>\n    <meta charset=\"UTF-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n</head>\n<body style=\"font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; max-width: 800px; margin: 0 auto; padding: 20px; background-color: #f8f9fa;\">\n    <div style=\"background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 10px 10px 0 0; text-align: center; color: white;\">\n        <h1 style=\"margin: 0; font-size: 2.2em; font-weight: 300;\">📊 Academic Assignment Report</h1>\n        <p style=\"margin: 10px 0 0 0; font-size: 1.1em; opacity: 0.9;\">Comprehensive Analysis & Recommendations</p>\n    </div>\n    \n    <div style=\"background: white; padding: 40px; border-radius: 0 0 10px 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);\">\n        <!-- Student Greeting -->\n        <div style=\"background: #e8f4fd; padding: 20px; border-radius: 8px; border-left: 4px solid #3498db; margin-bottom: 30px;\">\n            <h2 style=\"margin: 0 0 10px 0; color: #2c3e50; font-size: 1.4em;\">👋 Hello Natinael Samuel</h2>\n            <p style=\"margin: 0; color: #34495e;\">Your assignment analysis is complete and ready for review.</p>\n        </div>\n\n        <!-- Assignment Details -->\n        <div style=\"background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 30px;\">\n            <h3 style=\"margin: 0 0 15px 0; color: #2c3e50; font-size: 1.2em;\">📋 Assignment Information</h3>\n            <table style=\"width: 100%; border-collapse: collapse;\">\n                <tr>\n                    <td style=\"padding: 8px 0; color: #7f8c8d; width: 120px;\">Assignment ID:</td>\n                    <td style=\"padding: 8px 0; font-weight: 500;\">15</td>\n                </tr>\n                <tr>\n                    <td style=\"padding: 8px 0; color: #7f8c8d;\">File Name:</td>\n                    <td style=\"padding: 8px 0; font-weight: 500;\">The Role of Quantum Computing in Accelerating Drug Discovery and Materials Science.pdf</td>\n                </tr>\n                <tr>\n                    <td style=\"padding: 8px 0; color: #7f8c8d;\">Student ID:</td>\n                    <td style=\"padding: 8px 0; font-weight: 500;\">4</td>\n                </tr>\n            </table>\n        </div>\n\n        <!-- Summary Metrics -->\n        <div style=\"margin-bottom: 30px;\">\n            <h3 style=\"margin: 0 0 20px 0; color: #2c3e50; font-size: 1.3em; border-bottom: 2px solid #3498db; padding-bottom: 10px;\">📈 Summary Metrics</h3>\n            \n            <div style=\"display: flex; align-items: center; gap: 20px; flex-wrap: wrap;\">\n                <div style=\"flex: 1; min-width: 200px;\">\n                    <p style=\"margin: 0 0 8px 0; color: #7f8c8d; font-size: 0.9em;\">Status</p>\n                    <div style=\"background: #d5f4e6; color: #27ae60; padding: 12px; border-radius: 6px; text-align: center; font-weight: bold;\">\n                        DONE\n                    </div>\n                </div>\n                <div style=\"flex: 1; min-width: 200px;\">\n                    <p style=\"margin: 0 0 8px 0; color: #7f8c8d; font-size: 0.9em;\">Plagiarism Score</p>\n                    <div style=\"background: #fdeaea; color: #e74c3c; padding: 12px; border-radius: 6px; text-align: center; font-size: 1.4em; font-weight: bold;\">\n                        \n        <span style=\"font-size: 1.5em; font-weight: bold; color: #e74c3c;\">⚠️ 75.12%</span>\n    \n                    </div>\n                </div>\n            </div>\n        </div>\n\n        <!-- Flagged Sections -->\n        <div style=\"margin-bottom: 30px;\">\n            <h3 style=\"margin: 0 0 15px 0; color: #2c3e50; font-size: 1.3em;\">\n                🚩 Flagged Sections Breakdown\n            </h3>\n            \n            <div style=\"border-left: 4px solid #f39c12; padding: 10px; background-color: #fcf3cf; margin-bottom: 15px; border-radius: 4px;\">\n                <p style=\"margin: 0; font-size: 1.1em; color: #e67e22;\">\n                    <strong>Similarity:</strong> 75.12%\n                </p>\n                <p style=\"margin: 5px 0;\">\n                    <strong>Source:</strong> Quantum Machine Learning for Drug Discovery\n                </p>\n                <p style=\"margin: 0; font-style: italic; color: #5c6a78;\">\n                    Excerpt: \"The Role of Quantum Computing in Accelerating Drug Discovery and Materials Science Quantum computing promises to revolutionize chemistry and materials...\"\n                </p>\n            </div>\n        \n        </div>\n\n        <!-- Suggested Sources -->\n        <div style=\"margin-bottom: 30px;\">\n            <h3 style=\"margin: 0 0 15px 0; color: #2c3e50; font-size: 1.3em;\">\n                📚 Suggested Sources\n            </h3>\n            <ul style=\"padding-left: 20px;\">\n        <li style=\"margin-bottom: 5px; color: #34495e;\">Quantum Machine Learning for Drug Discovery</li>\n    </ul>\n        </div>\n\n        <!-- Research Suggestions -->\n        <div style=\"margin-bottom: 30px;\">\n            <h3 style=\"margin: 0 0 15px 0; color: #2c3e50; font-size: 1.3em;\">\n                💡 Research Suggestions\n            </h3>\n            <ol style=\"padding-left: 20px;\">\n        <li style=\"margin-bottom: 5px; color: #34495e;\">Quantum computing can revolutionize chemistry and materials science by directly modeling quantum mechanical phenomena.</li>\n    \n        <li style=\"margin-bottom: 5px; color: #34495e;\">In drug discovery, quantum computing can accelerate the early stages by predicting the binding affinity of drug candidates to target proteins.</li>\n    \n        <li style=\"margin-bottom: 5px; color: #34495e;\">In materials science, quantum simulation allows for the design of novel compounds and optimization of their performance metrics before physical synthesis.</li>\n    \n        <li style=\"margin-bottom: 5px; color: #34495e;\">Quantum algorithms like the Variational Quantum Eigensolver (VQE) can accurately determine ground-state energy of complex crystalline structures.</li>\n    </ol>\n        </div>\n\n        <!-- Citation Recommendations -->\n        <div style=\"margin-bottom: 30px;\">\n            <h3 style=\"margin: 0 0 15px 0; color: #2c3e50; font-size: 1.3em;\">\n                📝 Citation Recommendations\n            </h3>\n            <ul style=\"padding-left: 20px;\">\n        <li style=\"margin-bottom: 5px; color: #34495e;\">Quantum Computing in Chemistry: Progress and Challenges</li>\n    \n        <li style=\"margin-bottom: 5px; color: #34495e;\">Recent Advances in Quantum Algorithms for Chemistry</li>\n    </ul>\n        </div>\n\n        <!-- Footer -->\n        <div style=\"text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid #ecf0f1; color: #7f8c8d; font-size: 0.9em;\">\n            <p style=\"margin: 0;\">This report was generated automatically. Please review the findings carefully.</p>\n            <p style=\"margin: 5px 0 0 0;\">Need assistance? Contact your academic advisor.</p>\n        </div>\n    </div>\n</body>\n</html>\n    "
+        }
+      }
+    ],
+    "Edit Fields2": [
+      {
+        "json": {
+          "to": "afritioalberts1216@gmail.com",
+          "subject": "Your Assignment Analysis (ID: 15) is Ready!",
+          "body": "\n<!DOCTYPE html>\n<html>\n<head>\n    <meta charset=\"UTF-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n</head>\n<body style=\"font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; max-width: 800px; margin: 0 auto; padding: 20px; background-color: #f8f9fa;\">\n    <div style=\"background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 10px 10px 0 0; text-align: center; color: white;\">\n        <h1 style=\"margin: 0; font-size: 2.2em; font-weight: 300;\">📊 Academic Assignment Report</h1>\n        <p style=\"margin: 10px 0 0 0; font-size: 1.1em; opacity: 0.9;\">Comprehensive Analysis & Recommendations</p>\n    </div>\n    \n    <div style=\"background: white; padding: 40px; border-radius: 0 0 10px 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);\">\n        <!-- Student Greeting -->\n        <div style=\"background: #e8f4fd; padding: 20px; border-radius: 8px; border-left: 4px solid #3498db; margin-bottom: 30px;\">\n            <h2 style=\"margin: 0 0 10px 0; color: #2c3e50; font-size: 1.4em;\">👋 Hello Natinael Samuel</h2>\n            <p style=\"margin: 0; color: #34495e;\">Your assignment analysis is complete and ready for review.</p>\n        </div>\n\n        <!-- Assignment Details -->\n        <div style=\"background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 30px;\">\n            <h3 style=\"margin: 0 0 15px 0; color: #2c3e50; font-size: 1.2em;\">📋 Assignment Information</h3>\n            <table style=\"width: 100%; border-collapse: collapse;\">\n                <tr>\n                    <td style=\"padding: 8px 0; color: #7f8c8d; width: 120px;\">Assignment ID:</td>\n                    <td style=\"padding: 8px 0; font-weight: 500;\">15</td>\n                </tr>\n                <tr>\n                    <td style=\"padding: 8px 0; color: #7f8c8d;\">File Name:</td>\n                    <td style=\"padding: 8px 0; font-weight: 500;\">The Role of Quantum Computing in Accelerating Drug Discovery and Materials Science.pdf</td>\n                </tr>\n                <tr>\n                    <td style=\"padding: 8px 0; color: #7f8c8d;\">Student ID:</td>\n                    <td style=\"padding: 8px 0; font-weight: 500;\">4</td>\n                </tr>\n            </table>\n        </div>\n\n        <!-- Summary Metrics -->\n        <div style=\"margin-bottom: 30px;\">\n            <h3 style=\"margin: 0 0 20px 0; color: #2c3e50; font-size: 1.3em; border-bottom: 2px solid #3498db; padding-bottom: 10px;\">📈 Summary Metrics</h3>\n            \n            <div style=\"display: flex; align-items: center; gap: 20px; flex-wrap: wrap;\">\n                <div style=\"flex: 1; min-width: 200px;\">\n                    <p style=\"margin: 0 0 8px 0; color: #7f8c8d; font-size: 0.9em;\">Status</p>\n                    <div style=\"background: #d5f4e6; color: #27ae60; padding: 12px; border-radius: 6px; text-align: center; font-weight: bold;\">\n                        DONE\n                    </div>\n                </div>\n                <div style=\"flex: 1; min-width: 200px;\">\n                    <p style=\"margin: 0 0 8px 0; color: #7f8c8d; font-size: 0.9em;\">Plagiarism Score</p>\n                    <div style=\"background: #fdeaea; color: #e74c3c; padding: 12px; border-radius: 6px; text-align: center; font-size: 1.4em; font-weight: bold;\">\n                        \n        <span style=\"font-size: 1.5em; font-weight: bold; color: #e74c3c;\">⚠️ 75.12%</span>\n    \n                    </div>\n                </div>\n            </div>\n        </div>\n\n        <!-- Flagged Sections -->\n        <div style=\"margin-bottom: 30px;\">\n            <h3 style=\"margin: 0 0 15px 0; color: #2c3e50; font-size: 1.3em;\">\n                🚩 Flagged Sections Breakdown\n            </h3>\n            \n            <div style=\"border-left: 4px solid #f39c12; padding: 10px; background-color: #fcf3cf; margin-bottom: 15px; border-radius: 4px;\">\n                <p style=\"margin: 0; font-size: 1.1em; color: #e67e22;\">\n                    <strong>Similarity:</strong> 75.12%\n                </p>\n                <p style=\"margin: 5px 0;\">\n                    <strong>Source:</strong> Quantum Machine Learning for Drug Discovery\n                </p>\n                <p style=\"margin: 0; font-style: italic; color: #5c6a78;\">\n                    Excerpt: \"The Role of Quantum Computing in Accelerating Drug Discovery and Materials Science Quantum computing promises to revolutionize chemistry and materials...\"\n                </p>\n            </div>\n        \n        </div>\n\n        <!-- Suggested Sources -->\n        <div style=\"margin-bottom: 30px;\">\n            <h3 style=\"margin: 0 0 15px 0; color: #2c3e50; font-size: 1.3em;\">\n                📚 Suggested Sources\n            </h3>\n            <ul style=\"padding-left: 20px;\">\n        <li style=\"margin-bottom: 5px; color: #34495e;\">Quantum Machine Learning for Drug Discovery</li>\n    </ul>\n        </div>\n\n        <!-- Research Suggestions -->\n        <div style=\"margin-bottom: 30px;\">\n            <h3 style=\"margin: 0 0 15px 0; color: #2c3e50; font-size: 1.3em;\">\n                💡 Research Suggestions\n            </h3>\n            <ol style=\"padding-left: 20px;\">\n        <li style=\"margin-bottom: 5px; color: #34495e;\">Quantum computing can revolutionize chemistry and materials science by directly modeling quantum mechanical phenomena.</li>\n    \n        <li style=\"margin-bottom: 5px; color: #34495e;\">In drug discovery, quantum computing can accelerate the early stages by predicting the binding affinity of drug candidates to target proteins.</li>\n    \n        <li style=\"margin-bottom: 5px; color: #34495e;\">In materials science, quantum simulation allows for the design of novel compounds and optimization of their performance metrics before physical synthesis.</li>\n    \n        <li style=\"margin-bottom: 5px; color: #34495e;\">Quantum algorithms like the Variational Quantum Eigensolver (VQE) can accurately determine ground-state energy of complex crystalline structures.</li>\n    </ol>\n        </div>\n\n        <!-- Citation Recommendations -->\n        <div style=\"margin-bottom: 30px;\">\n            <h3 style=\"margin: 0 0 15px 0; color: #2c3e50; font-size: 1.3em;\">\n                📝 Citation Recommendations\n            </h3>\n            <ul style=\"padding-left: 20px;\">\n        <li style=\"margin-bottom: 5px; color: #34495e;\">Quantum Computing in Chemistry: Progress and Challenges</li>\n    \n        <li style=\"margin-bottom: 5px; color: #34495e;\">Recent Advances in Quantum Algorithms for Chemistry</li>\n    </ul>\n        </div>\n\n        <!-- Footer -->\n        <div style=\"text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid #ecf0f1; color: #7f8c8d; font-size: 0.9em;\">\n            <p style=\"margin: 0;\">This report was generated automatically. Please review the findings carefully.</p>\n            <p style=\"margin: 5px 0 0 0;\">Need assistance? Contact your academic advisor.</p>\n        </div>\n    </div>\n</body>\n</html>\n    "
+        }
+      }
+    ],
+    "Set Form URLs": [
+      {
+        "json": {
+          " Form URLs": "http://localhost:5678/form-test/submit-to-instructor",
+          "body": {
+            "assignment_id": 15,
+            "student_id": 4,
+            "filename": "The Role of Quantum Computing in Accelerating Drug Discovery and Materials Science.pdf",
+            "student_email": "afritioalberts1216@gmail.com",
+            "full_name": "Natinael Samuel",
+            "student_id_self": "WCU13d/1366",
+            "plagiarism_score": 75.12
+          }
+        }
+      }
+    ],
+    "Code in JavaScript1": [
+      {
+        "json": {
+          "assignment_id": 15,
+          "student_id": 4,
+          "filename": "The Role of Quantum Computing in Accelerating Drug Discovery and Materials Science.pdf",
+          "student_email": "afritioalberts1216@gmail.com",
+          "full_name": "Natinael Samuel",
+          "student_id_self": "WCU13d/1366",
+          "plagiarism_score": 75.12,
+          "formCallId": "http://localhost:5678/form-test/submit-to-instructor?token=15-4-11920",
+          "assignment_form_links": {
+            "form_call_id_token": "15-4-11920",
+            "assignment_id": 15,
+            "student_id": 4,
+            "student_email": "afritioalberts1216@gmail.com",
+            "full_name": "Natinael Samuel",
+            "student_id_self": "WCU13d/1366",
+            "filename": "The Role of Quantum Computing in Accelerating Drug Discovery and Materials Science.pdf",
+            "plagiarism_score": 75.12
+          },
+          "instructorFormUrl": "http://localhost:5678/form-test/submit-to-instructor?token=15-4-11920"
+        }
+      }
+    ],
+    "Insert row": [
+      {
+        "json": {
+          "id": 1,
+          "createdAt": "2025-10-16T23:25:29.378Z",
+          "updatedAt": "2025-10-16T23:25:29.378Z",
+          "id_token": "15-4-11920",
+          "formCallId": "http://localhost:5678/form-test/submit-to-instructor?token=15-4-11920",
+          "assignment_id": "15",
+          "student_id": "4",
+          "student_name": "Natinael Samuel",
+          "student_email": "afritioalberts1216@gmail.com",
+          "student_id_self": "WCU13d/1366",
+          "filename": "The Role of Quantum Computing in Accelerating Drug Discovery and Materials Science.pdf",
+          "plagiarism_score": "75.12"
+        }
+      }
+    ],
+    "Code in JavaScript3": [
+      {
+        "json": {
+          "id": 1,
+          "createdAt": "2025-10-16T23:25:29.378Z",
+          "updatedAt": "2025-10-16T23:25:29.378Z",
+          "id_token": "15-4-11920",
+          "formCallId": "http://localhost:5678/form-test/submit-to-instructor?token=15-4-11920",
+          "assignment_id": "15",
+          "student_id": "4",
+          "student_name": "Natinael Samuel",
+          "student_email": "afritioalberts1216@gmail.com",
+          "student_id_self": "WCU13d/1366",
+          "filename": "The Role of Quantum Computing in Accelerating Drug Discovery and Materials Science.pdf",
+          "plagiarism_score": "75.12",
+          "body_button_section": "\n    <div style=\"\n        max-width: 600px;\n        margin: 30px auto 0 auto; \n        padding: 30px; \n        background-color: #f8f9fa; \n        border: 1px solid #e0e6ea; \n        border-radius: 10px;\n        box-shadow: 0 2px 4px rgba(0,0,0,0.05);\n        text-align: center;\n    \">\n        \n        <h3 style=\"color: #4a90e2; font-size: 1.5em; margin: 0 0 15px 0; font-weight: 600;\">🚀 Assignment Submission Just Got Easier!</h3>\n\n        <div style=\"\n            background: #e8f7ff; \n            padding: 20px; \n            border-radius: 8px; \n            border-left: 5px solid #3498db; \n            margin-bottom: 25px;\n        \">\n            <p style=\"margin: 0; color: #2c3e50; font-size: 1.1em; line-height: 1.5;\">\n                Do you want automatic submission of this assignment with a <strong>guaranteed plagiarism-free testimonial</strong>?\n            </p>\n        </div>\n\n        <a href=\"http://localhost:5678/form-test/submit-to-instructor?token=15-4-11920\" \n           target=\"_blank\" \n           style=\"display: inline-block; \n                  padding: 12px 25px; \n                  background-color: #2ecc71; \n                  color: #ffffff; \n                  text-decoration: none; \n                  border-radius: 6px; \n                  font-size: 1.0em; \n                  font-weight: bold; \n                  transition: background-color 0.3s ease; \n                  box-shadow: 0 4px 6px rgba(46, 204, 113, 0.4);\">\n            Yes, Submit for Me! ✨\n        </a>\n        \n        <p style=\"margin: 15px 0 0 0; color: #95a5a6; font-size: 0.85em;\">\n            Your next click securely initiates the submission process.\n        </p>\n\n    </div>\n    "
+        }
+      }
+    ],
+    "Edit Fields": [
+      {
+        "json": {
+          "body_button_section": "\n    <div style=\"\n        max-width: 600px;\n        margin: 30px auto 0 auto; \n        padding: 30px; \n        background-color: #f8f9fa; \n        border: 1px solid #e0e6ea; \n        border-radius: 10px;\n        box-shadow: 0 2px 4px rgba(0,0,0,0.05);\n        text-align: center;\n    \">\n        \n        <h3 style=\"color: #4a90e2; font-size: 1.5em; margin: 0 0 15px 0; font-weight: 600;\">🚀 Assignment Submission Just Got Easier!</h3>\n\n        <div style=\"\n            background: #e8f7ff; \n            padding: 20px; \n            border-radius: 8px; \n            border-left: 5px solid #3498db; \n            margin-bottom: 25px;\n        \">\n            <p style=\"margin: 0; color: #2c3e50; font-size: 1.1em; line-height: 1.5;\">\n                Do you want automatic submission of this assignment with a <strong>guaranteed plagiarism-free testimonial</strong>?\n            </p>\n        </div>\n\n        <a href=\"http://localhost:5678/form-test/submit-to-instructor?token=15-4-11920\" \n           target=\"_blank\" \n           style=\"display: inline-block; \n                  padding: 12px 25px; \n                  background-color: #2ecc71; \n                  color: #ffffff; \n                  text-decoration: none; \n                  border-radius: 6px; \n                  font-size: 1.0em; \n                  font-weight: bold; \n                  transition: background-color 0.3s ease; \n                  box-shadow: 0 4px 6px rgba(46, 204, 113, 0.4);\">\n            Yes, Submit for Me! ✨\n        </a>\n        \n        <p style=\"margin: 15px 0 0 0; color: #95a5a6; font-size: 0.85em;\">\n            Your next click securely initiates the submission process.\n        </p>\n\n    </div>\n    "
+        }
+      }
+    ],
+    "Code in JavaScript4": [
+      {
+        "json": {
+          "to": "afritioalberts1216@gmail.com",
+          "subject": "Your Assignment Analysis (ID: 15) is Ready!",
+          "body": "\n<!DOCTYPE html>\n<html>\n<head>\n    <meta charset=\"UTF-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n</head>\n<body style=\"font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; max-width: 800px; margin: 0 auto; padding: 20px; background-color: #f8f9fa;\">\n    <div style=\"background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 10px 10px 0 0; text-align: center; color: white;\">\n        <h1 style=\"margin: 0; font-size: 2.2em; font-weight: 300;\">📊 Academic Assignment Report</h1>\n        <p style=\"margin: 10px 0 0 0; font-size: 1.1em; opacity: 0.9;\">Comprehensive Analysis & Recommendations</p>\n    </div>\n    \n    <div style=\"background: white; padding: 40px; border-radius: 0 0 10px 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);\">\n        <!-- Student Greeting -->\n        <div style=\"background: #e8f4fd; padding: 20px; border-radius: 8px; border-left: 4px solid #3498db; margin-bottom: 30px;\">\n            <h2 style=\"margin: 0 0 10px 0; color: #2c3e50; font-size: 1.4em;\">👋 Hello Natinael Samuel</h2>\n            <p style=\"margin: 0; color: #34495e;\">Your assignment analysis is complete and ready for review.</p>\n        </div>\n\n        <!-- Assignment Details -->\n        <div style=\"background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 30px;\">\n            <h3 style=\"margin: 0 0 15px 0; color: #2c3e50; font-size: 1.2em;\">📋 Assignment Information</h3>\n            <table style=\"width: 100%; border-collapse: collapse;\">\n                <tr>\n                    <td style=\"padding: 8px 0; color: #7f8c8d; width: 120px;\">Assignment ID:</td>\n                    <td style=\"padding: 8px 0; font-weight: 500;\">15</td>\n                </tr>\n                <tr>\n                    <td style=\"padding: 8px 0; color: #7f8c8d;\">File Name:</td>\n                    <td style=\"padding: 8px 0; font-weight: 500;\">The Role of Quantum Computing in Accelerating Drug Discovery and Materials Science.pdf</td>\n                </tr>\n                <tr>\n                    <td style=\"padding: 8px 0; color: #7f8c8d;\">Student ID:</td>\n                    <td style=\"padding: 8px 0; font-weight: 500;\">4</td>\n                </tr>\n            </table>\n        </div>\n\n        <!-- Summary Metrics -->\n        <div style=\"margin-bottom: 30px;\">\n            <h3 style=\"margin: 0 0 20px 0; color: #2c3e50; font-size: 1.3em; border-bottom: 2px solid #3498db; padding-bottom: 10px;\">📈 Summary Metrics</h3>\n            \n            <div style=\"display: flex; align-items: center; gap: 20px; flex-wrap: wrap;\">\n                <div style=\"flex: 1; min-width: 200px;\">\n                    <p style=\"margin: 0 0 8px 0; color: #7f8c8d; font-size: 0.9em;\">Status</p>\n                    <div style=\"background: #d5f4e6; color: #27ae60; padding: 12px; border-radius: 6px; text-align: center; font-weight: bold;\">\n                        DONE\n                    </div>\n                </div>\n                <div style=\"flex: 1; min-width: 200px;\">\n                    <p style=\"margin: 0 0 8px 0; color: #7f8c8d; font-size: 0.9em;\">Plagiarism Score</p>\n                    <div style=\"background: #fdeaea; color: #e74c3c; padding: 12px; border-radius: 6px; text-align: center; font-size: 1.4em; font-weight: bold;\">\n                        \n        <span style=\"font-size: 1.5em; font-weight: bold; color: #e74c3c;\">⚠️ 75.12%</span>\n    \n                    </div>\n                </div>\n            </div>\n        </div>\n\n        <!-- Flagged Sections -->\n        <div style=\"margin-bottom: 30px;\">\n            <h3 style=\"margin: 0 0 15px 0; color: #2c3e50; font-size: 1.3em;\">\n                🚩 Flagged Sections Breakdown\n            </h3>\n            \n            <div style=\"border-left: 4px solid #f39c12; padding: 10px; background-color: #fcf3cf; margin-bottom: 15px; border-radius: 4px;\">\n                <p style=\"margin: 0; font-size: 1.1em; color: #e67e22;\">\n                    <strong>Similarity:</strong> 75.12%\n                </p>\n                <p style=\"margin: 5px 0;\">\n                    <strong>Source:</strong> Quantum Machine Learning for Drug Discovery\n                </p>\n                <p style=\"margin: 0; font-style: italic; color: #5c6a78;\">\n                    Excerpt: \"The Role of Quantum Computing in Accelerating Drug Discovery and Materials Science Quantum computing promises to revolutionize chemistry and materials...\"\n                </p>\n            </div>\n        \n        </div>\n\n        <!-- Suggested Sources -->\n        <div style=\"margin-bottom: 30px;\">\n            <h3 style=\"margin: 0 0 15px 0; color: #2c3e50; font-size: 1.3em;\">\n                📚 Suggested Sources\n            </h3>\n            <ul style=\"padding-left: 20px;\">\n        <li style=\"margin-bottom: 5px; color: #34495e;\">Quantum Machine Learning for Drug Discovery</li>\n    </ul>\n        </div>\n\n        <!-- Research Suggestions -->\n        <div style=\"margin-bottom: 30px;\">\n            <h3 style=\"margin: 0 0 15px 0; color: #2c3e50; font-size: 1.3em;\">\n                💡 Research Suggestions\n            </h3>\n            <ol style=\"padding-left: 20px;\">\n        <li style=\"margin-bottom: 5px; color: #34495e;\">Quantum computing can revolutionize chemistry and materials science by directly modeling quantum mechanical phenomena.</li>\n    \n        <li style=\"margin-bottom: 5px; color: #34495e;\">In drug discovery, quantum computing can accelerate the early stages by predicting the binding affinity of drug candidates to target proteins.</li>\n    \n        <li style=\"margin-bottom: 5px; color: #34495e;\">In materials science, quantum simulation allows for the design of novel compounds and optimization of their performance metrics before physical synthesis.</li>\n    \n        <li style=\"margin-bottom: 5px; color: #34495e;\">Quantum algorithms like the Variational Quantum Eigensolver (VQE) can accurately determine ground-state energy of complex crystalline structures.</li>\n    </ol>\n        </div>\n\n        <!-- Citation Recommendations -->\n        <div style=\"margin-bottom: 30px;\">\n            <h3 style=\"margin: 0 0 15px 0; color: #2c3e50; font-size: 1.3em;\">\n                📝 Citation Recommendations\n            </h3>\n            <ul style=\"padding-left: 20px;\">\n        <li style=\"margin-bottom: 5px; color: #34495e;\">Quantum Computing in Chemistry: Progress and Challenges</li>\n    \n        <li style=\"margin-bottom: 5px; color: #34495e;\">Recent Advances in Quantum Algorithms for Chemistry</li>\n    </ul>\n        </div>\n\n        <!-- Footer -->\n        <div style=\"text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid #ecf0f1; color: #7f8c8d; font-size: 0.9em;\">\n            <p style=\"margin: 0;\">This report was generated automatically. Please review the findings carefully.</p>\n            <p style=\"margin: 5px 0 0 0;\">Need assistance? Contact your academic advisor.</p>\n        </div>\n    </div>\n\n    <div style=\"\n        max-width: 600px;\n        margin: 30px auto 0 auto; \n        padding: 30px; \n        background-color: #f8f9fa; \n        border: 1px solid #e0e6ea; \n        border-radius: 10px;\n        box-shadow: 0 2px 4px rgba(0,0,0,0.05);\n        text-align: center;\n    \">\n        \n        <h3 style=\"color: #4a90e2; font-size: 1.5em; margin: 0 0 15px 0; font-weight: 600;\">🚀 Assignment Submission Just Got Easier!</h3>\n\n        <div style=\"\n            background: #e8f7ff; \n            padding: 20px; \n            border-radius: 8px; \n            border-left: 5px solid #3498db; \n            margin-bottom: 25px;\n        \">\n            <p style=\"margin: 0; color: #2c3e50; font-size: 1.1em; line-height: 1.5;\">\n                Do you want automatic submission of this assignment with a <strong>guaranteed plagiarism-free testimonial</strong>?\n            </p>\n        </div>\n\n        <a href=\"http://localhost:5678/form-test/submit-to-instructor?token=15-4-11920\" \n           target=\"_blank\" \n           style=\"display: inline-block; \n                  padding: 12px 25px; \n                  background-color: #2ecc71; \n                  color: #ffffff; \n                  text-decoration: none; \n                  border-radius: 6px; \n                  font-size: 1.0em; \n                  font-weight: bold; \n                  transition: background-color 0.3s ease; \n                  box-shadow: 0 4px 6px rgba(46, 204, 113, 0.4);\">\n            Yes, Submit for Me! ✨\n        </a>\n        \n        <p style=\"margin: 15px 0 0 0; color: #95a5a6; font-size: 0.85em;\">\n            Your next click securely initiates the submission process.\n        </p>\n\n    </div>\n    \n</body>\n</html>\n    "
+        }
+      }
+    ],
+    "Send email to student": [
+      {
+        "json": {
+          "accepted": [
+            "afritioalberts1216@gmail.com"
+          ],
+          "rejected": [],
+          "ehlo": [
+            "SIZE 35882577",
+            "8BITMIME",
+            "AUTH LOGIN PLAIN XOAUTH2 PLAIN-CLIENTTOKEN OAUTHBEARER XOAUTH",
+            "ENHANCEDSTATUSCODES",
+            "PIPELINING",
+            "CHUNKING",
+            "SMTPUTF8"
+          ],
+          "envelopeTime": 1665,
+          "messageTime": 1424,
+          "messageSize": 10086,
+          "response": "250 2.0.0 OK  1760657290 4fb4d7f45d1cf-63a5c132567sm16996721a12.33 - gsmtp",
+          "envelope": {
+            "from": "afritioalberts1216@gmail.com",
+            "to": [
+              "afritioalberts1216@gmail.com"
+            ]
+          },
+          "messageId": "<43a26658-ff79-d7fd-4c3a-ca67e3a3073d@gmail.com>"
+        }
+      }
+    ],
+    "Instructor email submission": [
+      {
+        "json": {
+          "Instroctor Email": "diguwasoft@gmail.com",
+          "token": "15-4-11920",
+          "submittedAt": "2025-10-17T04:48:49.900-04:00",
+          "formMode": "test",
+          "formQueryParameters": {
+            "token": "15-4-11920"
+          }
+        }
+      }
+    ],
+    "Edit Fields4": [
+      {
+        "json": {
+          "Instroctor Email": "diguwasoft@gmail.com",
+          "token": "15-4-11920"
+        }
+      }
+    ],
+    "Get row(s)": [
+      {
+        "json": {
+          "id": 1,
+          "createdAt": "2025-10-16T23:25:29.378Z",
+          "updatedAt": "2025-10-16T23:25:29.378Z",
+          "assignment_id": "15",
+          "student_id": "4",
+          "student_name": "Natinael Samuel",
+          "student_id_self": "WCU13d/1366",
+          "filename": "The Role of Quantum Computing in Accelerating Drug Discovery and Materials Science.pdf",
+          "plagiarism_score": "75.12",
+          "student_email": "afritioalberts1216@gmail.com",
+          "id_token": "15-4-11920",
+          "formCallId": "http://localhost:5678/form-test/submit-to-instructor?token=15-4-11920"
+        }
+      }
+    ],
+    "Set Subject, Body": [
+      {
+        "json": {
+          "to": "afritioalberts1216@gmail.com",
+          "subject": "Your Assignment Analysis (ID: 15) is Ready!",
+          "body": "\n<!DOCTYPE html>\n<html>\n<head>\n    <meta charset=\"UTF-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n</head>\n<body style=\"font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; max-width: 800px; margin: 0 auto; padding: 20px; background-color: #f8f9fa;\">\n    <div style=\"background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 10px 10px 0 0; text-align: center; color: white;\">\n        <h1 style=\"margin: 0; font-size: 2.2em; font-weight: 300;\">📊 Academic Assignment Report</h1>\n        <p style=\"margin: 10px 0 0 0; font-size: 1.1em; opacity: 0.9;\">Comprehensive Analysis & Recommendations</p>\n    </div>\n    \n    <div style=\"background: white; padding: 40px; border-radius: 0 0 10px 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);\">\n        <!-- Student Greeting -->\n        <div style=\"background: #e8f4fd; padding: 20px; border-radius: 8px; border-left: 4px solid #3498db; margin-bottom: 30px;\">\n            <h2 style=\"margin: 0 0 10px 0; color: #2c3e50; font-size: 1.4em;\">👋 Hello Natinael Samuel</h2>\n            <p style=\"margin: 0; color: #34495e;\">Your assignment analysis is complete and ready for review.</p>\n        </div>\n\n        <!-- Assignment Details -->\n        <div style=\"background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 30px;\">\n            <h3 style=\"margin: 0 0 15px 0; color: #2c3e50; font-size: 1.2em;\">📋 Assignment Information</h3>\n            <table style=\"width: 100%; border-collapse: collapse;\">\n                <tr>\n                    <td style=\"padding: 8px 0; color: #7f8c8d; width: 120px;\">Assignment ID:</td>\n                    <td style=\"padding: 8px 0; font-weight: 500;\">15</td>\n                </tr>\n                <tr>\n                    <td style=\"padding: 8px 0; color: #7f8c8d;\">File Name:</td>\n                    <td style=\"padding: 8px 0; font-weight: 500;\">The Role of Quantum Computing in Accelerating Drug Discovery and Materials Science.pdf</td>\n                </tr>\n                <tr>\n                    <td style=\"padding: 8px 0; color: #7f8c8d;\">Student ID:</td>\n                    <td style=\"padding: 8px 0; font-weight: 500;\">4</td>\n                </tr>\n            </table>\n        </div>\n\n        <!-- Summary Metrics -->\n        <div style=\"margin-bottom: 30px;\">\n            <h3 style=\"margin: 0 0 20px 0; color: #2c3e50; font-size: 1.3em; border-bottom: 2px solid #3498db; padding-bottom: 10px;\">📈 Summary Metrics</h3>\n            \n            <div style=\"display: flex; align-items: center; gap: 20px; flex-wrap: wrap;\">\n                <div style=\"flex: 1; min-width: 200px;\">\n                    <p style=\"margin: 0 0 8px 0; color: #7f8c8d; font-size: 0.9em;\">Status</p>\n                    <div style=\"background: #d5f4e6; color: #27ae60; padding: 12px; border-radius: 6px; text-align: center; font-weight: bold;\">\n                        DONE\n                    </div>\n                </div>\n                <div style=\"flex: 1; min-width: 200px;\">\n                    <p style=\"margin: 0 0 8px 0; color: #7f8c8d; font-size: 0.9em;\">Plagiarism Score</p>\n                    <div style=\"background: #fdeaea; color: #e74c3c; padding: 12px; border-radius: 6px; text-align: center; font-size: 1.4em; font-weight: bold;\">\n                        \n        <span style=\"font-size: 1.5em; font-weight: bold; color: #e74c3c;\">⚠️ 75.12%</span>\n    \n                    </div>\n                </div>\n            </div>\n        </div>\n\n        <!-- Flagged Sections -->\n        <div style=\"margin-bottom: 30px;\">\n            <h3 style=\"margin: 0 0 15px 0; color: #2c3e50; font-size: 1.3em;\">\n                🚩 Flagged Sections Breakdown\n            </h3>\n            \n            <div style=\"border-left: 4px solid #f39c12; padding: 10px; background-color: #fcf3cf; margin-bottom: 15px; border-radius: 4px;\">\n                <p style=\"margin: 0; font-size: 1.1em; color: #e67e22;\">\n                    <strong>Similarity:</strong> 75.12%\n                </p>\n                <p style=\"margin: 5px 0;\">\n                    <strong>Source:</strong> Quantum Machine Learning for Drug Discovery\n                </p>\n                <p style=\"margin: 0; font-style: italic; color: #5c6a78;\">\n                    Excerpt: \"The Role of Quantum Computing in Accelerating Drug Discovery and Materials Science Quantum computing promises to revolutionize chemistry and materials...\"\n                </p>\n            </div>\n        \n        </div>\n\n        <!-- Suggested Sources -->\n        <div style=\"margin-bottom: 30px;\">\n            <h3 style=\"margin: 0 0 15px 0; color: #2c3e50; font-size: 1.3em;\">\n                📚 Suggested Sources\n            </h3>\n            <ul style=\"padding-left: 20px;\">\n        <li style=\"margin-bottom: 5px; color: #34495e;\">Quantum Machine Learning for Drug Discovery</li>\n    </ul>\n        </div>\n\n        <!-- Research Suggestions -->\n        <div style=\"margin-bottom: 30px;\">\n            <h3 style=\"margin: 0 0 15px 0; color: #2c3e50; font-size: 1.3em;\">\n                💡 Research Suggestions\n            </h3>\n            <ol style=\"padding-left: 20px;\">\n        <li style=\"margin-bottom: 5px; color: #34495e;\">Quantum computing can revolutionize chemistry and materials science by directly modeling quantum mechanical phenomena.</li>\n    \n        <li style=\"margin-bottom: 5px; color: #34495e;\">In drug discovery, quantum computing can accelerate the early stages by predicting the binding affinity of drug candidates to target proteins.</li>\n    \n        <li style=\"margin-bottom: 5px; color: #34495e;\">In materials science, quantum simulation allows for the design of novel compounds and optimization of their performance metrics before physical synthesis.</li>\n    \n        <li style=\"margin-bottom: 5px; color: #34495e;\">Quantum algorithms like the Variational Quantum Eigensolver (VQE) can accurately determine ground-state energy of complex crystalline structures.</li>\n    </ol>\n        </div>\n\n        <!-- Citation Recommendations -->\n        <div style=\"margin-bottom: 30px;\">\n            <h3 style=\"margin: 0 0 15px 0; color: #2c3e50; font-size: 1.3em;\">\n                📝 Citation Recommendations\n            </h3>\n            <ul style=\"padding-left: 20px;\">\n        <li style=\"margin-bottom: 5px; color: #34495e;\">Quantum Computing in Chemistry: Progress and Challenges</li>\n    \n        <li style=\"margin-bottom: 5px; color: #34495e;\">Recent Advances in Quantum Algorithms for Chemistry</li>\n    </ul>\n        </div>\n\n        <!-- Footer -->\n        <div style=\"text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid #ecf0f1; color: #7f8c8d; font-size: 0.9em;\">\n            <p style=\"margin: 0;\">This report was generated automatically. Please review the findings carefully.</p>\n            <p style=\"margin: 5px 0 0 0;\">Need assistance? Contact your academic advisor.</p>\n        </div>\n    </div>\n\n    <div style=\"\n        max-width: 600px;\n        margin: 30px auto 0 auto; \n        padding: 30px; \n        background-color: #f8f9fa; \n        border: 1px solid #e0e6ea; \n        border-radius: 10px;\n        box-shadow: 0 2px 4px rgba(0,0,0,0.05);\n        text-align: center;\n    \">\n        \n        <h3 style=\"color: #4a90e2; font-size: 1.5em; margin: 0 0 15px 0; font-weight: 600;\">🚀 Assignment Submission Just Got Easier!</h3>\n\n        <div style=\"\n            background: #e8f7ff; \n            padding: 20px; \n            border-radius: 8px; \n            border-left: 5px solid #3498db; \n            margin-bottom: 25px;\n        \">\n            <p style=\"margin: 0; color: #2c3e50; font-size: 1.1em; line-height: 1.5;\">\n                Do you want automatic submission of this assignment with a <strong>guaranteed plagiarism-free testimonial</strong>?\n            </p>\n        </div>\n\n        <a href=\"http://localhost:5678/form-test/submit-to-instructor?token=15-4-11920\" \n           target=\"_blank\" \n           style=\"display: inline-block; \n                  padding: 12px 25px; \n                  background-color: #2ecc71; \n                  color: #ffffff; \n                  text-decoration: none; \n                  border-radius: 6px; \n                  font-size: 1.0em; \n                  font-weight: bold; \n                  transition: background-color 0.3s ease; \n                  box-shadow: 0 4px 6px rgba(46, 204, 113, 0.4);\">\n            Yes, Submit for Me! ✨\n        </a>\n        \n        <p style=\"margin: 15px 0 0 0; color: #95a5a6; font-size: 0.85em;\">\n            Your next click securely initiates the submission process.\n        </p>\n\n    </div>\n    \n</body>\n</html>\n    "
+        }
+      }
+    ],
+    "Split Out": [
+      {
+        "json": {
+          "filename": "The Role of Quantum Computing in Accelerating Drug Discovery and Materials Science.pdf"
+        }
+      }
+    ],
+    "Edit Fields1": [
+      {
+        "json": {
+          "To": "diguwasoft@gmail.com",
+          "subject": "Auto Submittion Of Assignment  From: Natinael Samuel",
+          "body": "\n<!DOCTYPE html>\n<html>\n<head>\n    <meta charset=\"UTF-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n</head>\n<body style=\"font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 650px; margin: 0 auto; padding: 20px; background-color: #f7f9fc;\">\n    \n    <div style=\"background-color: #ffffff; padding: 30px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.05); border-top: 5px solid #2ecc71;\">\n        \n        <h1 style=\"color: #2c3e50; font-size: 1.8em; margin: 0 0 15px 0;\">\n            🚀 Automated Submission Notification\n        </h1>\n        <p style=\"color: #7f8c8d; margin-bottom: 25px; border-bottom: 1px solid #eee; padding-bottom: 15px;\">\n            This assignment has been automatically submitted to the system with a plagiarism free testimonial from the student.\n        </p>\n\n        <div style=\"margin-bottom: 30px; background-color: #e8f7ff; padding: 20px; border-radius: 8px;\">\n            <h2 style=\"color: #3498db; font-size: 1.2em; margin-top: 0; border-bottom: 2px solid #3498db; padding-bottom: 5px;\">\n                Assignment Details\n            </h2>\n            <table style=\"width: 100%; border-collapse: collapse;\">\n                <tr>\n                    <td style=\"padding: 8px 0; color: #555; width: 140px; font-weight: bold;\">Name of Student:</td>\n                    <td style=\"padding: 8px 0;\">Natinael Samuel</td>\n                </tr>\n                <tr>\n                    <td style=\"padding: 8px 0; color: #555; font-weight: bold;\">Student ID (Self):</td>\n                    <td style=\"padding: 8px 0;\">WCU13d/1366</td>\n                </tr>\n                <tr>\n                    <td style=\"padding: 8px 0; color: #555; font-weight: bold;\">Student Email:</td>\n                    <td style=\"padding: 8px 0;\">afritioalberts1216@gmail.com</td>\n                </tr>\n                <tr>\n                    <td style=\"padding: 8px 0; color: #555; font-weight: bold;\">File Name:</td>\n                    <td style=\"padding: 8px 0;\">The Role of Quantum Computing in Accelerating Drug Discovery and Materials Science.pdf</td>\n                </tr>\n                <tr>\n                    <td style=\"padding: 8px 0; color: #555; font-weight: bold;\">Plagiarism Score:</td>\n                    <td style=\"padding: 8px 0; font-weight: bold; color: #e74c3c; font-size: 1.1em;\">\n                        75.12%\n                    </td>\n                </tr>\n            </table>\n        </div>\n\n        <div style=\"text-align: center; margin-top: 30px; padding-top: 15px; border-top: 1px solid #eee;\">\n            <p style=\"margin-bottom: 15px; color: #555;\">\n                Automated subtion and pallagrism testmonial brought to you By: Acadamic Assignment Helper\n            </p>\n            \n        </div>\n        \n    </div>\n</body>\n</html>\n    "
+        }
+      }
+    ],
+    "Code in JavaScript2": [
+      {
+        "json": {
+          "id": 1,
+          "createdAt": "2025-10-16T23:25:29.378Z",
+          "updatedAt": "2025-10-16T23:25:29.378Z",
+          "assignment_id": "15",
+          "student_id": "4",
+          "student_name": "Natinael Samuel",
+          "student_id_self": "WCU13d/1366",
+          "filename": "The Role of Quantum Computing in Accelerating Drug Discovery and Materials Science.pdf",
+          "plagiarism_score": "75.12",
+          "student_email": "afritioalberts1216@gmail.com",
+          "id_token": "15-4-11920",
+          "formCallId": "http://localhost:5678/form-test/submit-to-instructor?token=15-4-11920",
+          "To": "diguwasoft@gmail.com",
+          "subject": "Auto Submittion Of Assignment  From: Natinael Samuel",
+          "body": "\n<!DOCTYPE html>\n<html>\n<head>\n    <meta charset=\"UTF-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n</head>\n<body style=\"font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 650px; margin: 0 auto; padding: 20px; background-color: #f7f9fc;\">\n    \n    <div style=\"background-color: #ffffff; padding: 30px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.05); border-top: 5px solid #2ecc71;\">\n        \n        <h1 style=\"color: #2c3e50; font-size: 1.8em; margin: 0 0 15px 0;\">\n            🚀 Automated Submission Notification\n        </h1>\n        <p style=\"color: #7f8c8d; margin-bottom: 25px; border-bottom: 1px solid #eee; padding-bottom: 15px;\">\n            This assignment has been automatically submitted to the system with a plagiarism free testimonial from the student.\n        </p>\n\n        <div style=\"margin-bottom: 30px; background-color: #e8f7ff; padding: 20px; border-radius: 8px;\">\n            <h2 style=\"color: #3498db; font-size: 1.2em; margin-top: 0; border-bottom: 2px solid #3498db; padding-bottom: 5px;\">\n                Assignment Details\n            </h2>\n            <table style=\"width: 100%; border-collapse: collapse;\">\n                <tr>\n                    <td style=\"padding: 8px 0; color: #555; width: 140px; font-weight: bold;\">Name of Student:</td>\n                    <td style=\"padding: 8px 0;\">Natinael Samuel</td>\n                </tr>\n                <tr>\n                    <td style=\"padding: 8px 0; color: #555; font-weight: bold;\">Student ID (Self):</td>\n                    <td style=\"padding: 8px 0;\">WCU13d/1366</td>\n                </tr>\n                <tr>\n                    <td style=\"padding: 8px 0; color: #555; font-weight: bold;\">Student Email:</td>\n                    <td style=\"padding: 8px 0;\">afritioalberts1216@gmail.com</td>\n                </tr>\n                <tr>\n                    <td style=\"padding: 8px 0; color: #555; font-weight: bold;\">File Name:</td>\n                    <td style=\"padding: 8px 0;\">The Role of Quantum Computing in Accelerating Drug Discovery and Materials Science.pdf</td>\n                </tr>\n                <tr>\n                    <td style=\"padding: 8px 0; color: #555; font-weight: bold;\">Plagiarism Score:</td>\n                    <td style=\"padding: 8px 0; font-weight: bold; color: #e74c3c; font-size: 1.1em;\">\n                        75.12%\n                    </td>\n                </tr>\n            </table>\n        </div>\n\n        <div style=\"text-align: center; margin-top: 30px; padding-top: 15px; border-top: 1px solid #eee;\">\n            <p style=\"margin-bottom: 15px; color: #555;\">\n                Automated Submision  and Plagiarism  testmonial brought to you By: Acadamic Assignment Helper\n            </p>\n            \n        </div>\n        \n    </div>\n</body>\n</html>\n    "
+        }
+      }
+    ],
+    "Split Out1": [
+      {
+        "json": {
+          "student_name": "Natinael Samuel",
+          "student_email": "afritioalberts1216@gmail.com",
+          "filename": "The Role of Quantum Computing in Accelerating Drug Discovery and Materials Science.pdf",
+          "assignment_id": "15"
+        }
+      }
+    ],
+    "Send email to instructor": [
+      {
+        "json": {
+          "accepted": [
+            "diguwasoft@gmail.com"
+          ],
+          "rejected": [],
+          "ehlo": [
+            "SIZE 35882577",
+            "8BITMIME",
+            "AUTH LOGIN PLAIN XOAUTH2 PLAIN-CLIENTTOKEN OAUTHBEARER XOAUTH",
+            "ENHANCEDSTATUSCODES",
+            "PIPELINING",
+            "CHUNKING",
+            "SMTPUTF8"
+          ],
+          "envelopeTime": 917,
+          "messageTime": 2147,
+          "messageSize": 380739,
+          "response": "250 2.0.0 failed  1760702620 a640c23a62f3a-b5cccdaa082sm793181666b.50 - gsmtp",
+          "envelope": {
+            "from": "afritioalberts1216@gmail.com",
+            "to": [
+              "diguwasoft@gmail.com"
+            ]
+          },
+          "messageId": "<79930883-3e12-cd77-f4d6-4a34f60baf2f@gmail.com>"
+        }
+      }
+    ],
+    "Email Sent Successfully": [
+      {
+        "json": {
+          "To": "afritioalberts1216@gmail.com",
+          "subject": "Confirmation: Your Assignment 15 Was Submitted!",
+          "body": "\n<!DOCTYPE html>\n<html>\n<head>\n    <meta charset=\"UTF-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n</head>\n<body style=\"font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f0fdf4;\">\n    \n    <div style=\"background-color: #ffffff; padding: 30px; border-radius: 10px; border-left: 5px solid #2ecc71; box-shadow: 0 4px 8px rgba(0,0,0,0.05);\">\n        \n        <h1 style=\"color: #2ecc71; font-size: 1.8em; margin: 0 0 10px 0;\">\n            🎉 Success! Submission Confirmed\n        </h1>\n        <p style=\"color: #34495e; font-size: 1.1em; margin-bottom: 25px;\">\n            Hello Natinael Samuel,\n        </p>\n\n        <div style=\"background-color: #e6fff1; padding: 15px; border-radius: 6px; margin-bottom: 20px;\">\n            <p style=\"margin: 0; color: #27ae60; font-weight: bold;\">\n                Your assignment (ID: 15) has been successfully delivered to your instructor's email (diguwasoft@gmail.com).\n            </p>\n        </div>\n\n        <p style=\"color: #555;\">\n            The automated submission process is now complete. The email included your full report and the assignment file.\n        </p>\n\n        <div style=\"text-align: center; margin-top: 30px; padding-top: 15px; border-top: 1px solid #eee; color: #7f8c8d; font-size: 0.9em;\">\n            <p style=\"margin: 0;\">You do not need to take any further action.</p>\n        </div>\n    </div>\n</body>\n</html>\n    "
+        }
+      }
+    ],
+    "Edit Fields3": [
+      {
+        "json": {
+          "To": "afritioalberts1216@gmail.com",
+          "subject": "Confirmation: Your Assignment 15 Was Submitted!",
+          "body": "\n<!DOCTYPE html>\n<html>\n<head>\n    <meta charset=\"UTF-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n</head>\n<body style=\"font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f0fdf4;\">\n    \n    <div style=\"background-color: #ffffff; padding: 30px; border-radius: 10px; border-left: 5px solid #2ecc71; box-shadow: 0 4px 8px rgba(0,0,0,0.05);\">\n        \n        <h1 style=\"color: #2ecc71; font-size: 1.8em; margin: 0 0 10px 0;\">\n            🎉 Success! Submission Confirmed\n        </h1>\n        <p style=\"color: #34495e; font-size: 1.1em; margin-bottom: 25px;\">\n            Hello Natinael Samuel,\n        </p>\n\n        <div style=\"background-color: #e6fff1; padding: 15px; border-radius: 6px; margin-bottom: 20px;\">\n            <p style=\"margin: 0; color: #27ae60; font-weight: bold;\">\n                Your assignment (ID: 15) has been successfully delivered to your instructor's email (diguwasoft@gmail.com).\n            </p>\n        </div>\n\n        <p style=\"color: #555;\">\n            The automated submission process is now complete. The email included your full report and the assignment file.\n        </p>\n\n        <div style=\"text-align: center; margin-top: 30px; padding-top: 15px; border-top: 1px solid #eee; color: #7f8c8d; font-size: 0.9em;\">\n            <p style=\"margin: 0;\">You do not need to take any further action.</p>\n        </div>\n    </div>\n</body>\n</html>\n    "
+        }
+      }
+    ],
+    "Send email": [
+      {
+        "json": {
+          "accepted": [
+            "afritioalberts1216@gmail.com"
+          ],
+          "rejected": [],
+          "ehlo": [
+            "SIZE 35882577",
+            "8BITMIME",
+            "AUTH LOGIN PLAIN XOAUTH2 PLAIN-CLIENTTOKEN OAUTHBEARER XOAUTH",
+            "ENHANCEDSTATUSCODES",
+            "PIPELINING",
+            "CHUNKING",
+            "SMTPUTF8"
+          ],
+          "envelopeTime": 772,
+          "messageTime": 872,
+          "messageSize": 2323,
+          "response": "250 2.0.0 OK  1760703670 a640c23a62f3a-b5cba45ad2fsm807595266b.35 - gsmtp",
+          "envelope": {
+            "from": "afritioalberts1216@gmail.com",
+            "to": [
+              "afritioalberts1216@gmail.com"
+            ]
+          },
+          "messageId": "<c04fee30-fe4c-2a01-fd5f-f4f302030106@gmail.com>"
+        }
+      }
+    ],
+    "Prepare Log Record": [
+      {
+        "json": {
+          "log_submission_record": {
+            "assignment_id": "15",
+            "student_email": "afritioalberts1216@gmail.com",
+            "instructor_email": "diguwasoft@gmail.com",
+            "log_response_code": "250 2.0.0",
+            "log_timestamp": "2025-10-17T14:05:32.953Z",
+            "log_message_id": "<79930883-3e12-cd77-f4d6-4a34f60baf2f@gmail.com>",
+            "log_status": "SUCCESS",
+            "log_full_response": "250 2.0.0 failed  1760702620 a640c23a62f3a-b5cccdaa082sm793181666b.50 - gsmtp"
+          }
+        }
+      }
+    ],
+    "Insert row1": [
+      {
+        "json": {
+          "id": 1,
+          "createdAt": "2025-10-17T14:06:23.549Z",
+          "updatedAt": "2025-10-17T14:06:23.549Z",
+          "assignment_id": "15",
+          "student_email": "afritioalberts1216@gmail.com",
+          "instructor_email": "diguwasoft@gmail.com",
+          "log_response_code": "250 2.0.0",
+          "log_timestamp": "2025-10-17T14:05:32.953Z",
+          "log_message_id": "<79930883-3e12-cd77-f4d6-4a34f60baf2f@gmail.com>",
+          "log_status": "SUCCESS"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Set Form URLs",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send email to student": {
+      "main": [
+        []
+      ]
+    },
+    "Instructor email submission": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields4",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Form URLs": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Subject, Body": {
+      "main": [
+        [
+          {
+            "node": "Send email to student",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Insert row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript3": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields2": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript4": {
+      "main": [
+        [
+          {
+            "node": "Set Subject, Body",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert row": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields4": {
+      "main": [
+        [
+          {
+            "node": "Get row(s)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Form",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send email to instructor": {
+      "main": [
+        [
+          {
+            "node": "Merge2",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Get row(s)": {
+      "main": [
+        [
+          {
+            "node": "Split Out",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Code in JavaScript2",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Split Out1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read/Write Files from Disk": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Split Out": {
+      "main": [
+        [
+          {
+            "node": "Read/Write Files from Disk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript2": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields1": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge1": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript5": {
+      "main": [
+        [
+          {
+            "node": "Send email to instructor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email Sent Successfully": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out1": {
+      "main": [
+        [
+          {
+            "node": "Merge2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge2": {
+      "main": [
+        [
+          {
+            "node": "Email Sent Successfully",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Prepare Log Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields3": {
+      "main": [
+        [
+          {
+            "node": "Send email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send email": {
+      "main": [
+        []
+      ]
+    },
+    "Prepare Log Record": {
+      "main": [
+        [
+          {
+            "node": "Insert row1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "e4c6f69f-c892-4779-b444-eb389af3b17a",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "32c50b20d72c7c9bfaaa0d76e194e3372cb03ee3e817ed2ed45ecefaa1ef3f42"
+  },
+  "id": "CZ4OpMzviOo5ofdp",
+  "tags": [
+    {
+      "createdAt": "2025-10-15T12:37:14.993Z",
+      "updatedAt": "2025-10-15T12:37:14.993Z",
+      "id": "ziChmvyhxavKRuhe",
+      "name": "Flow 2"
+    }
+  ]
+}

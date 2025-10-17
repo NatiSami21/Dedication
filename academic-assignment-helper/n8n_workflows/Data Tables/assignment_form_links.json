@@ -1,0 +1,16 @@
+[
+  {
+    "id": 1,
+    "createdAt": "2025-10-16T23:25:29.378Z",
+    "updatedAt": "2025-10-16T23:25:29.378Z",
+    "assignment_id": "15",
+    "student_id": "4",
+    "student_name": "Natinael Samuel",
+    "student_id_self": "WCU13d/1366",
+    "filename": "The Role of Quantum Computing in Accelerating Drug Discovery and Materials Science.pdf",
+    "plagiarism_score": "75.12",
+    "student_email": "afritioalberts1216@gmail.com",
+    "id_token": "15-4-11920",
+    "formCallId": "http://localhost:5678/form-test/submit-to-instructor?token=15-4-11920"
+  }
+]

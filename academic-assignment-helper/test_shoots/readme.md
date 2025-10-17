@@ -144,3 +144,14 @@ The Swagger documentation defines several key data schemas:
 * **Token**: Used for successful login response, includes `access_token` and `token_type` (bearer).
 * **HTTPValidationError** / **ValidationError**: Standard schemas for 422 responses, providing details on location (`loc`), message (`msg`), and type (`type`) of the validation error.
 * **Body\_upload\_assignment\_upload\_\_post**: Defines the file field (`file`) for the assignment upload endpoint, expected as a binary string.
+
+I have brought with new Idia:
+
+On the previous work flow I'll updated like this:
+- First there is a webhook url wich accepts payload from fast API
+- the webhook connected with two difrent flows
+First trigered flow:
+- There is a fuction node for approach to process all arrays and generate well-structured, attractive HTML lists and formatted text. because for arrays it just sends email [object, object]
+- Then Set node filters fields to from, subject, and body
+-then it passes to email node
+-then there will be Http request 
